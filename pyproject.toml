@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "re-oa-webrender"
+version = "0.1.0"
+description = ""
+authors = ["yzhh <31803608+OasisAkari@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+uvicorn = "^0.32.1"
+fastapi = "^0.115.5"
+pydantic = "^2.10.2"
+playwright = "^1.49.0"
+orjson = "^3.10.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
