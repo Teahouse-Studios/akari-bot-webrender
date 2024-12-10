@@ -16,22 +16,31 @@ app = FastAPI()
 logger = logging.getLogger("uvicorn")
 
 class ScreenshotOptions(BaseModel):
+    content: str = None
+    width : int = 500
+    height : int = 1000
+    mw : bool = False
+    tracing : bool = False
+
+
+class ElementScreenshotOptions(BaseModel):
+    element: str | list = None
+    content: str = None
     url: str = None
     css: str = None
     width: int = 1280
     height: int = 720
-
-
-class ElementScreenshotOptions(ScreenshotOptions):
-    element: str | list = None
-    content: str = None
     counttime: bool = False
     tracing: bool = False
 
 
-class SectionScreenshotOptions(ScreenshotOptions):
+class SectionScreenshotOptions(BaseModel):
     section: str | list = None
     content: str = None
+    url: str = None
+    css: str = None
+    width: int = 1280
+    height: int = 720
     counttime: bool = False
     tracing: bool = False
 
@@ -83,22 +92,79 @@ async def is_avail(el: int | list, pg: Page):
             break
 
 
-async def makeScreenshot(page: Page, el: Page.query_selector):
+async def make_screenshot(page: Page, el: Page.query_selector):
     await page.evaluate("window.scroll(0, 0)")
     images = []
     img = await el.screenshot(type='png')
     images.append(base64.b64encode(img).decode())
     return images
 
-
-@app.post("/page/")
-async def page_screenshot(options: ScreenshotOptions):
+@app.post("/")
+async def _screenshot(options: ScreenshotOptions):
     await Browser.browser_init()
     page = await Browser.browser.new_page()
-    await page.goto(options.url, wait_until="networkidle")
-    if options.css:
-        await page.add_style_tag(content=options.css + custom_css)
-    screenshot = await makeScreenshot(page, await page.query_selector("body"))
+    await page.set_viewport_size({'width':options.width,'height':options.height})
+    content_plate = f"""<link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK&family=Noto+Sans+JP&family=Noto+Sans+KR&family=Noto+Sans+SC&family=Noto+Sans+TC&display=swap" rel="stylesheet"><style>html body {{
+        margin-top: 0px !important;
+        font-family: 'Noto Sans SC', sans-serif;
+    }}
+    
+    :lang(ko) {{
+        font-family: 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans HK', 'Noto Sans TC', 'Noto Sans SC', sans-serif;
+    }}
+    
+    :lang(ja) {{
+        font-family: 'Noto Sans JP', 'Noto Sans HK', 'Noto Sans TC', 'Noto Sans SC', 'Noto Sans KR', sans-serif;
+    }}
+    
+    :lang(zh-TW) {{
+        font-family: 'Noto Sans HK', 'Noto Sans TC', 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans KR', sans-serif;
+    }}
+    
+    :lang(zh-HK) {{
+        font-family: 'Noto Sans HK', 'Noto Sans TC', 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans KR', sans-serif;
+    }}
+    
+    :lang(zh-Hans), :lang(zh-CN), :lang(zh) {{
+        font-family:  'Noto Sans SC', 'Noto Sans HK', 'Noto Sans TC', 'Noto Sans JP', 'Noto Sans KR', sans-serif;
+    }}
+    
+    div.infobox div.notaninfobox{{
+        width: 100%!important;
+        float: none!important;
+        margin: 0 0 0 0!important;
+    }}
+    
+    table.infobox, table.infoboxSpecial, table.moe-infobox {{
+        width: 100%!important;
+        float: unset!important;
+        margin: 0 0 0 0!important;
+    }}</style>
+    <meta charset="UTF-8">
+    <body>
+    {options.content}
+    </body>
+    """
+    await page.set_content(content_plate,wait_until='networkidle')
+    if options.mw:
+        selector = 'body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)'
+    else:
+        selector = 'body > *:not(script):not(style):not(link):not(meta)'
+    element_ = await page.query_selector(selector)
+    image = await make_screenshot(page, element_)
+    await page.close()
+    return ORJSONResponse(content=image)
+
+@app.post("/page/")
+async def page_screenshot(url: str = None,css: str = None):
+    await Browser.browser_init()
+    page = await Browser.browser.new_page()
+    await page.goto(url, wait_until="networkidle")
+    if css:
+        await page.add_style_tag(content=css + custom_css)
+    screenshot = await make_screenshot(page, await page.query_selector("body"))
     await page.close()
     return ORJSONResponse(content=screenshot)
 
@@ -116,7 +182,7 @@ async def element_screenshot(options: ElementScreenshotOptions):
     el = await page.query_selector(await is_avail(options.element, page))
     if not el:
         raise HTTPException(status_code=404, detail="Element not found")
-    images = await makeScreenshot(page, el)
+    images = await make_screenshot(page, el)
     await page.close()
     return ORJSONResponse(content=images)
 
@@ -134,7 +200,7 @@ async def section_screenshot(options: SectionScreenshotOptions):
     section = await page.query_selector(await is_avail(options.section, page))
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
-    images = await makeScreenshot(page, section)
+    images = await make_screenshot(page, section)
     await page.close()
     return ORJSONResponse(content=images)
 
