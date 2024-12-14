@@ -151,7 +151,7 @@ async def select_element(el: str | list, pg: Page) -> ElementHandle:
                 return rtn
 
 
-async def make_screenshot(page: Page, el: Page.query_selector):
+async def make_screenshot(page: Page, el: ElementHandle) -> list:
     await page.evaluate("window.scroll(0, 0)")
     await page.route('**/*', lambda route: route.abort())
     images = []
