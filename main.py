@@ -46,9 +46,6 @@ class SectionScreenshotOptions(BaseModel):
     tracing: bool = False
 
 
-# 自定义CSS
-
-
 class Browser:
     playwright: Playwright = None
     browser: BrowserProcess = None
@@ -134,6 +131,15 @@ class Templates():
         """
         return custom_css
 
+    @staticmethod
+    def elements_to_disable():
+        elements_to_disable = ['.notifications-placeholder', '.top-ads-container', '.fandom-sticky-header',
+                               'div#WikiaBar', 'aside.page__right-rail',
+                               '.n-modal-container', 'div#moe-float-toc-container', 'div#moe-draw-float-button',
+                               'div#moe-global-header', '.mys-wrapper',
+                               'div#moe-open-in-app', 'div#age-gate', ".va-variant-prompt", ".va-variant-prompt-mobile"]
+        return elements_to_disable
+
 
 async def is_avail(el: int | list, pg: Page):
     if isinstance(el, str):
@@ -148,6 +154,7 @@ async def is_avail(el: int | list, pg: Page):
 
 async def make_screenshot(page: Page, el: Page.query_selector):
     await page.evaluate("window.scroll(0, 0)")
+    await page.route('**/*', lambda route: route.abort())
     images = []
     img = await el.screenshot(type='png')
     images.append(base64.b64encode(img).decode())
@@ -191,8 +198,36 @@ async def element_screenshot(options: ElementScreenshotOptions):
         await page.set_content(options.content)
     else:
         await page.goto(options.url, wait_until="networkidle")
+    await page.add_style_tag(content=Templates().custom_css())
     if options.css:
-        await page.add_style_tag(content=options.css + Templates().custom_css())
+        await page.add_style_tag(content=options.css)
+    await page.evaluate("""(elements_to_disable) => {
+
+            const lazyimg = document.querySelectorAll(".lazyload")
+            for (var i = 0; i < lazyimg.length; i++) {
+              lazyimg[i].className = 'image'
+              lazyimg[i].src = lazyimg[i].getAttribute('data-src')
+            }
+            const animated = document.querySelectorAll(".animated")
+            for (var i = 0; i < animated.length; i++) {
+              b = animated[i].querySelectorAll('img')
+              for (ii = 0; ii < b.length; ii++) {
+                b[ii].width = b[ii].getAttribute('width') / (b.length / 2)
+                b[ii].height = b[ii].getAttribute('height') / (b.length / 2)
+              }
+              animated[i].className = 'nolongeranimatebaka'
+            }
+            for (var i = 0; i < elements_to_disable.length; i++) {
+              const element_to_boom = document.querySelector(elements_to_disable[i])// :rina: :rina: :rina: :rina:
+              if (element_to_boom != null) {
+                element_to_boom.style = 'display: none'
+              }
+            }
+            document.querySelectorAll('*').forEach(element => {
+              element.parentNode.replaceChild(element.cloneNode(true), element);
+            });
+            window.scroll(0, 0)
+          }""", Templates().elements_to_disable())
     el = await page.query_selector(await is_avail(options.element, page))
     if not el:
         raise HTTPException(status_code=404, detail="Element not found")
