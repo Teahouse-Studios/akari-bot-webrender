@@ -29,8 +29,8 @@ class ElementScreenshotOptions(BaseModel):
     content: str = None
     url: str = None
     css: str = None
-    width: int = 1280
-    height: int = 720
+    width: int = 720
+    height: int = 1280
     counttime: bool = False
     tracing: bool = False
 
@@ -40,8 +40,8 @@ class SectionScreenshotOptions(BaseModel):
     content: str = None
     url: str = None
     css: str = None
-    width: int = 1280
-    height: int = 720
+    width: int = 720
+    height: int = 1280
     counttime: bool = False
     tracing: bool = False
 
