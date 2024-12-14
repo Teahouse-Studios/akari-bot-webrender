@@ -6,7 +6,7 @@ import orjson as json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import ORJSONResponse
 from playwright import async_api
-from playwright.async_api import Playwright, Browser as BrowserProcess, Page
+from playwright.async_api import Playwright, Browser as BrowserProcess, Page, ElementHandle
 from pydantic import BaseModel
 
 with open('config.json', 'r') as f:
@@ -141,15 +141,14 @@ class Templates():
         return elements_to_disable
 
 
-async def is_avail(el: int | list, pg: Page):
+async def select_element(el: str | list, pg: Page) -> ElementHandle:
     if isinstance(el, str):
-        return el
+        return await pg.query_selector(el)
     else:
         for obj in el:
-            rtn = await pg.query_selector(str(obj))
-            if rtn:
-                return str(obj)
-            break
+            rtn = await pg.query_selector(obj)
+            if rtn is not None:
+                return rtn
 
 
 async def make_screenshot(page: Page, el: Page.query_selector):
@@ -228,7 +227,7 @@ async def element_screenshot(options: ElementScreenshotOptions):
             });
             window.scroll(0, 0)
           }""", Templates().elements_to_disable())
-    el = await page.query_selector(await is_avail(options.element, page))
+    el = await select_element(options.element, page)
     if not el:
         raise HTTPException(status_code=404, detail="Element not found")
     images = await make_screenshot(page, el)
@@ -247,7 +246,7 @@ async def section_screenshot(options: SectionScreenshotOptions):
         await page.goto(options.url, wait_until="networkidle")
     if options.css:
         await page.add_style_tag(content=options.css + Templates().custom_css())
-    section = await page.query_selector(await is_avail(options.section, page))
+    section = await select_element(options.section, page)
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
     images = await make_screenshot(page, section)
