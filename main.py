@@ -205,13 +205,12 @@ async def element_screenshot(options: ElementScreenshotOptions):
     await page.add_style_tag(content=Templates().custom_css())
     if options.css:
         await page.add_style_tag(content=options.css)
+    # :rina: :rina: :rina: :rina:
     await page.evaluate("""(elements_to_disable) => {
-
-            const lazyimg = document.querySelectorAll(".lazyload")
-            for (var i = 0; i < lazyimg.length; i++) {
-              lazyimg[i].className = 'image'
-              lazyimg[i].src = lazyimg[i].getAttribute('data-src')
-            }
+            const images = document.querySelectorAll("img")
+            images.forEach(image => {
+              image.removeAttribute('loading');
+            })
             const animated = document.querySelectorAll(".animated")
             for (var i = 0; i < animated.length; i++) {
               b = animated[i].querySelectorAll('img')
