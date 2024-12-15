@@ -12,6 +12,7 @@ fastapi = "^0.115.5"
 pydantic = "^2.10.2"
 playwright = "^1.49.0"
 orjson = "^3.10.12"
+playwright-stealth = "^1.0.6"
 
 
 [build-system]

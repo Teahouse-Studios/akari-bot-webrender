@@ -292,6 +292,23 @@ greenlet = "3.1.1"
 pyee = "12.0.0"
 
 [[package]]
+name = "playwright-stealth"
+version = "1.0.6"
+description = "playwright stealth"
+optional = false
+python-versions = ">=3, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+files = [
+    {file = "playwright-stealth-1.0.6.tar.gz", hash = "sha256:b504d951d00fac755c7d13665a29611d415180510bd7d23f14ebc89439ba2043"},
+    {file = "playwright_stealth-1.0.6-py3-none-any.whl", hash = "sha256:b1b2bcf58eb6859aa53d42c49b91c4e27b74a6d13fc3d0c85eea513dd55efda3"},
+]
+
+[package.dependencies]
+playwright = "*"
+
+[package.extras]
+test = ["pytest"]
+
+[[package]]
 name = "pydantic"
 version = "2.10.2"
 description = "Data validation using Python type hints"
@@ -500,4 +517,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.6.3)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "ba6cce06d252ce5e0e8ad44ef9969df8566aa9d730963ab24b84fcb725279521"
+content-hash = "e77e5c5a0ac9bbbc6791e4184721f0ded15a27f53a8b0555e8ae0a33840a7bc1"

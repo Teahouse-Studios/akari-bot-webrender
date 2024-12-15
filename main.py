@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import ORJSONResponse
 from playwright import async_api
 from playwright.async_api import Playwright, Browser as BrowserProcess, Page, ElementHandle
+from playwright_stealth import stealth_async
 from pydantic import BaseModel
 
 with open('config.json', 'r') as f:
@@ -14,6 +15,7 @@ with open('config.json', 'r') as f:
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn")
+user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36'
 
 
 class ScreenshotOptions(BaseModel):
@@ -163,7 +165,8 @@ async def make_screenshot(page: Page, el: ElementHandle) -> list:
 @app.post("/")
 async def _screenshot(options: ScreenshotOptions):
     await Browser.browser_init()
-    page = await Browser.browser.new_page()
+    page = await Browser.browser.new_page(user_agent=user_agent)
+    await stealth_async(page)
     await page.set_viewport_size({'width': options.width, 'height': options.height})
     await page.set_content(Templates().content(options.content), wait_until='networkidle')
     if options.mw:
@@ -179,7 +182,8 @@ async def _screenshot(options: ScreenshotOptions):
 @app.post("/page/")
 async def page_screenshot(url: str = None, css: str = None):
     await Browser.browser_init()
-    page = await Browser.browser.new_page()
+    page = await Browser.browser.new_page(user_agent=user_agent)
+    await stealth_async(page)
     await page.goto(url, wait_until="networkidle")
     if css:
         await page.add_style_tag(content=css + Templates().custom_css())
@@ -191,7 +195,8 @@ async def page_screenshot(url: str = None, css: str = None):
 @app.post("/element_screenshot/")
 async def element_screenshot(options: ElementScreenshotOptions):
     await Browser.browser_init()
-    page = await Browser.browser.new_page()
+    page = await Browser.browser.new_page(user_agent=user_agent)
+    await stealth_async(page)
     await page.set_viewport_size({'width': options.width, 'height': options.height})
     if options.content:
         await page.set_content(options.content)
@@ -238,7 +243,8 @@ async def element_screenshot(options: ElementScreenshotOptions):
 @app.post("/section_screenshot/")
 async def section_screenshot(options: SectionScreenshotOptions):
     await Browser.browser_init()
-    page = await Browser.browser.new_page()
+    page = await Browser.browser.new_page(user_agent=user_agent)
+    await stealth_async(page)
     await page.set_viewport_size({'width': options.width, 'height': options.height})
     if options.content:
         await page.set_content(options.content)
@@ -257,7 +263,8 @@ async def section_screenshot(options: SectionScreenshotOptions):
 @app.get("/source/")
 async def source(request: Request):
     await Browser.browser_init()
-    page = await Browser.browser.new_page()
+    page = await Browser.browser.new_page(user_agent=user_agent)
+    await stealth_async(page)
     try:
         url = request.query_params.get("url")
         if not url:
