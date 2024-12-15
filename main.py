@@ -1,29 +1,35 @@
 import asyncio
 import base64
+import datetime
 import logging
+from contextlib import asynccontextmanager
 
 import orjson as json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import ORJSONResponse
 from playwright import async_api
-from playwright.async_api import Playwright, Browser as BrowserProcess, Page, ElementHandle
-from playwright_stealth import stealth_async
+from playwright.async_api import Playwright, Browser as BrowserProcess, Page, ElementHandle, BrowserContext
+from playwright_stealth import Stealth
 from pydantic import BaseModel
 
 with open('config.json', 'r') as f:
     config = json.loads(f.read())
 
-app = FastAPI()
+debug = False
+
 logger = logging.getLogger("uvicorn")
 user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36'
+base_width = 720
+base_height = 1280
 
 
 class ScreenshotOptions(BaseModel):
     content: str = None
-    width: int = 500
-    height: int = 1000
+    width: int = base_width
+    height: int = base_height
     mw: bool = False
     tracing: bool = False
+    counttime: bool = True
 
 
 class ElementScreenshotOptions(BaseModel):
@@ -31,9 +37,9 @@ class ElementScreenshotOptions(BaseModel):
     content: str = None
     url: str = None
     css: str = None
-    width: int = 720
-    height: int = 1280
-    counttime: bool = False
+    width: int = base_width
+    height: int = base_height
+    counttime: bool = True
     tracing: bool = False
 
 
@@ -42,29 +48,46 @@ class SectionScreenshotOptions(BaseModel):
     content: str = None
     url: str = None
     css: str = None
-    width: int = 720
-    height: int = 1280
-    counttime: bool = False
+    width: int = base_width
+    height: int = base_height
+    counttime: bool = True
     tracing: bool = False
 
 
 class Browser:
     playwright: Playwright = None
     browser: BrowserProcess = None
+    contexts: dict[str, BrowserContext] = {}
+    stealth = Stealth(
+        init_scripts_only=True
+    )
 
     @classmethod
     async def browser_init(cls):
         if not cls.playwright and not cls.browser:
             logger.info('Launching browser...')
             cls.playwright = await async_api.async_playwright().start()
-            cls.browser = await cls.playwright.firefox.launch(headless=True)
+            cls.browser = await cls.playwright.firefox.launch(headless=not debug)
             while not cls.browser:
                 await asyncio.sleep(1)
+            cls.contexts[f'{base_width}x{base_height}'] = await cls.browser.new_context(user_agent=user_agent,
+                                                                                        viewport={'width': base_width,
+                                                                                                  'height': base_height})
+            await cls.stealth.apply_stealth_async(cls.contexts[f'{base_width}x{base_height}'])
             logger.info('Successfully launched browser.')
 
     @classmethod
     async def close(cls):
         await cls.browser.close()
+
+    @classmethod
+    async def new_page(cls, width=base_width, height=base_height):
+        if f'{width}x{height}' not in cls.contexts:
+            cls.contexts[f'{width}x{height}'] = await cls.browser.new_context(user_agent=user_agent,
+                                                                            viewport={'width': width, 'height': height})
+            await cls.stealth.apply_stealth_async(cls.contexts[f'{width}x{height}'])
+
+        return await cls.contexts[f'{width}x{height}'].new_page()
 
 
 class Templates():
@@ -143,14 +166,14 @@ class Templates():
         return elements_to_disable
 
 
-async def select_element(el: str | list, pg: Page) -> ElementHandle:
+async def select_element(el: str | list, pg: Page) -> (ElementHandle, str):
     if isinstance(el, str):
-        return await pg.query_selector(el)
+        return (await pg.query_selector(el)), el
     else:
         for obj in el:
             rtn = await pg.query_selector(obj)
             if rtn is not None:
-                return rtn
+                return rtn, obj
 
 
 async def make_screenshot(page: Page, el: ElementHandle) -> list:
@@ -162,42 +185,74 @@ async def make_screenshot(page: Page, el: ElementHandle) -> list:
     return images
 
 
+async def add_count_box(page: Page, element: str, start_time: float=datetime.datetime.now().timestamp()):
+    return await page.evaluate("""
+        ({selected_element, start_time}) => {
+            t = document.createElement('span')
+            t.className = 'bot-countbox'
+            t.style = 'position: absolute;opacity: 0.2;'
+            document.querySelector(selected_element).insertBefore(t, document.querySelector(selected_element).firstChild)
+            countTime();
+            function countTime() {
+                var nowtime = new Date();
+                var lefttime = parseInt((nowtime.getTime() - start_time) / 1000);
+                document.querySelector(".bot-countbox").innerHTML = `Generated by akaribot in ${lefttime}s`;
+                if (lefttime <= 0) {
+                    return;
+                }
+            setTimeout(countTime, 1000);
+            }
+        }""", {'selected_element': element, 'start_time': int(start_time * 1000)})
+
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        await Browser.browser_init()
+        yield
+    finally:
+        await Browser.close()
+
+app = FastAPI(lifespan=lifespan)
+
+
 @app.post("/")
 async def _screenshot(options: ScreenshotOptions):
-    await Browser.browser_init()
-    page = await Browser.browser.new_page(user_agent=user_agent)
-    await stealth_async(page)
-    await page.set_viewport_size({'width': options.width, 'height': options.height})
+    start_time = datetime.datetime.now().timestamp()
+    page = await Browser.new_page(width=options.width, height=options.height)
     await page.set_content(Templates().content(options.content), wait_until='networkidle')
     if options.mw:
         selector = 'body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)'
     else:
         selector = 'body > *:not(script):not(style):not(link):not(meta)'
     element_ = await page.query_selector(selector)
+    if not element_:
+        raise HTTPException(status_code=404, detail="Element not found")
+    if options.counttime:
+        await add_count_box(page, selector, start_time)
     images = await make_screenshot(page, element_)
-    await page.close()
+    if not debug:
+        await page.close()
     return ORJSONResponse(content=images)
 
 
 @app.post("/page/")
 async def page_screenshot(url: str = None, css: str = None):
-    await Browser.browser_init()
-    page = await Browser.browser.new_page(user_agent=user_agent)
-    await stealth_async(page)
+    page = await Browser.new_page()
     await page.goto(url, wait_until="networkidle")
     if css:
         await page.add_style_tag(content=css + Templates().custom_css())
     screenshot = await make_screenshot(page, await page.query_selector("body"))
-    await page.close()
+    if not debug:
+        await page.close()
     return ORJSONResponse(content=screenshot)
 
 
 @app.post("/element_screenshot/")
 async def element_screenshot(options: ElementScreenshotOptions):
-    await Browser.browser_init()
-    page = await Browser.browser.new_page(user_agent=user_agent)
-    await stealth_async(page)
-    await page.set_viewport_size({'width': options.width, 'height': options.height})
+    start_time = datetime.datetime.now().timestamp()
+    page = await Browser.new_page(width=options.width, height=options.height)
     if options.content:
         await page.set_content(options.content)
     else:
@@ -231,39 +286,41 @@ async def element_screenshot(options: ElementScreenshotOptions):
             });
             window.scroll(0, 0)
           }""", Templates().elements_to_disable())
-    el = await select_element(options.element, page)
+    el, selected_ = await select_element(options.element, page)
     if not el:
         raise HTTPException(status_code=404, detail="Element not found")
+    if options.counttime:
+        await add_count_box(page, selected_, start_time)
     images = await make_screenshot(page, el)
-    await page.close()
+    if not debug:
+        await page.close()
     return ORJSONResponse(content=images)
 
 
 @app.post("/section_screenshot/")
 async def section_screenshot(options: SectionScreenshotOptions):
-    await Browser.browser_init()
-    page = await Browser.browser.new_page(user_agent=user_agent)
-    await stealth_async(page)
-    await page.set_viewport_size({'width': options.width, 'height': options.height})
+    start_time = datetime.datetime.now().timestamp()
+    page = await Browser.new_page(width=options.width, height=options.height)
     if options.content:
         await page.set_content(options.content)
     else:
         await page.goto(options.url, wait_until="networkidle")
     if options.css:
         await page.add_style_tag(content=options.css + Templates().custom_css())
-    section = await select_element(options.section, page)
+    section, selected_ = await select_element(options.section, page)
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
+    if options.counttime:
+        await add_count_box(page, selected_, start_time)
     images = await make_screenshot(page, section)
-    await page.close()
+    if not debug:
+        await page.close()
     return ORJSONResponse(content=images)
 
 
 @app.get("/source/")
 async def source(request: Request):
-    await Browser.browser_init()
-    page = await Browser.browser.new_page(user_agent=user_agent)
-    await stealth_async(page)
+    page = await Browser.new_page()
     try:
         url = request.query_params.get("url")
         if not url:
@@ -274,7 +331,8 @@ async def source(request: Request):
 
         return ORJSONResponse(content={"source": _source})
     finally:
-        await page.close()
+        if not debug:
+            await page.close()
 
 
 if __name__ == "__main__":
@@ -286,4 +344,3 @@ if __name__ == "__main__":
         loop.run_until_complete(uvicorn.run(app, host=config["server"]["host"], port=config["server"]["port"]))
     except KeyboardInterrupt:
         logger.info("Server stopped")
-        asyncio.run(Browser.close())
