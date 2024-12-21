@@ -22,7 +22,6 @@ user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Ge
 base_width = 720
 base_height = 1280
 
-
 class ScreenshotOptions(BaseModel):
     content: str = None
     width: int = base_width
@@ -31,6 +30,9 @@ class ScreenshotOptions(BaseModel):
     tracing: bool = False
     counttime: bool = True
 
+class PageScreenshotOptions(BaseModel):
+    url: str = None
+    css: str = None
 
 class ElementScreenshotOptions(BaseModel):
     element: str | list = None
@@ -84,7 +86,8 @@ class Browser:
     async def new_page(cls, width=base_width, height=base_height):
         if f'{width}x{height}' not in cls.contexts:
             cls.contexts[f'{width}x{height}'] = await cls.browser.new_context(user_agent=user_agent,
-                                                                            viewport={'width': width, 'height': height})
+                                                                              viewport={'width': width,
+                                                                                        'height': height})
             await cls.stealth.apply_stealth_async(cls.contexts[f'{width}x{height}'])
 
         return await cls.contexts[f'{width}x{height}'].new_page()
@@ -185,7 +188,7 @@ async def make_screenshot(page: Page, el: ElementHandle) -> list:
     return images
 
 
-async def add_count_box(page: Page, element: str, start_time: float=datetime.datetime.now().timestamp()):
+async def add_count_box(page: Page, element: str, start_time: float = datetime.datetime.now().timestamp()):
     return await page.evaluate("""
         ({selected_element, start_time}) => {
             t = document.createElement('span')
@@ -205,7 +208,6 @@ async def add_count_box(page: Page, element: str, start_time: float=datetime.dat
         }""", {'selected_element': element, 'start_time': int(start_time * 1000)})
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -213,6 +215,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         await Browser.close()
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -238,11 +241,12 @@ async def _screenshot(options: ScreenshotOptions):
 
 
 @app.post("/page/")
-async def page_screenshot(url: str = None, css: str = None):
+async def page_screenshot(options:PageScreenshotOptions):
     page = await Browser.new_page()
-    await page.goto(url, wait_until="networkidle")
-    if css:
-        await page.add_style_tag(content=css + Templates().custom_css())
+    await page.goto(options.url, wait_until="networkidle")
+    await page.add_style_tag(content=Templates().custom_css())
+    if options.css:
+        await page.add_style_tag(content=options.css)
     screenshot = await make_screenshot(page, await page.query_selector("body"))
     if not debug:
         await page.close()
