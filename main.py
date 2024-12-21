@@ -242,12 +242,12 @@ async def _screenshot(options: ScreenshotOptions):
 
 @app.post("/page/")
 async def page_screenshot(options:PageScreenshotOptions):
-    page = await Browser.new_page(width=base_width, height=base_height)
+    page = await Browser.new_page()
     await page.goto(options.url, wait_until="networkidle")
     await page.add_style_tag(content=Templates().custom_css())
     if options.css:
         await page.add_style_tag(content=options.css)
-    screenshot = [base64.b64encode(await page.screenshot(type='png', full_page=True)).decode()]
+    screenshot = await make_screenshot(page, await page.query_selector("body"))
     if not debug:
         await page.close()
     return ORJSONResponse(content=screenshot)
@@ -331,13 +331,9 @@ async def source(request: Request):
             raise HTTPException(status_code=400, detail="URL parameter is required")
 
         await page.goto(url, wait_until="networkidle")
+        _source = await page.content()
 
-        if url.endswith('.json'):
-            _source = json.loads(await (await page.query_selector('pre')).inner_text())
-        else:
-            _source = await page.content()
-
-        return ORJSONResponse(content=_source)
+        return ORJSONResponse(content={"source": _source})
     finally:
         if not debug:
             await page.close()
