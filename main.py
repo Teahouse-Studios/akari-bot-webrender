@@ -331,9 +331,13 @@ async def source(request: Request):
             raise HTTPException(status_code=400, detail="URL parameter is required")
 
         await page.goto(url, wait_until="networkidle")
-        _source = await page.content()
 
-        return ORJSONResponse(content={"source": _source})
+        if url.endswith('.json'):
+            _source = json.loads(await (await page.query_selector('pre')).inner_text())
+        else:
+            _source = await page.content()
+
+        return ORJSONResponse(content=_source)
     finally:
         if not debug:
             await page.close()
