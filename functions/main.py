@@ -1,11 +1,13 @@
+import asyncio
 import base64
 import datetime
+import math
 
 from fastapi import Request
 from jinja2 import Environment, FileSystemLoader
-from playwright.async_api import Page, ElementHandle
+from playwright.async_api import Page, ElementHandle, FloatRect
 
-from constants import templates_path, elements_to_disable
+from constants import templates_path, elements_to_disable, max_screenshot_height
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
 from .options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions
@@ -18,6 +20,11 @@ class WebRender:
     custom_css = open(templates_path + '/custom.css', 'r', encoding='utf-8').read()
 
     def __init__(self, debug: bool = False):
+        """
+        :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
+        """
+
+
         self.debug = debug
 
         if not WebRender.browser:
@@ -37,13 +44,36 @@ class WebRender:
                 if rtn is not None:
                     return rtn, obj
 
-    @staticmethod
-    async def make_screenshot(page: Page, el: ElementHandle) -> list:
+    async def make_screenshot(self, page: Page, el: ElementHandle, screenshot_height=max_screenshot_height) -> list:
         await page.evaluate("window.scroll(0, 0)")
         await page.route('**/*', lambda route: route.abort())
+        await page.wait_for_load_state("networkidle")
+        content_size = await el.bounding_box()
+        dpr = page.viewport_size.get("deviceScaleFactor", 1)
+        screenshot_height = math.floor(screenshot_height / dpr)
+        self.logger.debug(f"Content size: {content_size}, DPR: {dpr}, Screenshot height: {screenshot_height}")
+
+        y_pos = content_size.get("y")
+        total_content_height = content_size.get("y")
         images = []
-        img = await el.screenshot(type='png')
-        images.append(base64.b64encode(img).decode())
+        while True:
+            if y_pos > content_size.get("height") + content_size.get("y"):
+                break
+            total_content_height += max_screenshot_height
+            content_height = max_screenshot_height
+            if (total_content_height > content_size.get("height") + content_size.get("y")):
+                content_height = content_size.get("height") + content_size.get("y") - total_content_height + max_screenshot_height
+            await page.evaluate(f"window.scroll({content_size.get("x")}, {y_pos})")
+            await asyncio.sleep(3)
+            self.logger.debug("X:" + str(content_size.get("x")) + " Y:" + str(y_pos)+ " Width:" + str(content_size.get("width")) + " Height:" + str(content_height))
+
+            img = await page.screenshot(type='png',
+                                        clip=FloatRect(x=content_size.get("x"),
+                                                       y=y_pos,
+                                                       width=content_size.get("width"),
+                                                       height=content_height), full_page=True)
+            images.append(base64.b64encode(img).decode())
+            y_pos += screenshot_height
         return images
 
 
@@ -67,10 +97,10 @@ class WebRender:
                 }
             }""", {'selected_element': element, 'start_time': int(start_time * 1000)})
 
-    @classmethod
-    async def legacy_screenshot(cls, options: ScreenshotOptions):
+
+    async def legacy_screenshot(self, options: ScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
-        page = await cls.browser.new_page(width=options.width, height=options.height)
+        page = await self.browser.new_page(width=options.width, height=options.height)
         rendered_html = env.get_template("content.html").render(language='zh-CN', content=options.content)
         await page.set_content(rendered_html, wait_until='networkidle')
         if options.mw:
@@ -81,34 +111,32 @@ class WebRender:
         if not element_:
             raise ElementNotFound
         if options.counttime:
-            await cls.add_count_box(page, selector, start_time)
-        images = await cls.make_screenshot(page, element_)
-        if not cls.debug:
+            await self.add_count_box(page, selector, start_time)
+        images = await self.make_screenshot(page, element_)
+        if not self.debug:
             await page.close()
         return images
 
-    @classmethod
-    async def page_screenshot(cls, options: PageScreenshotOptions):
-        page = await Browser.new_page()
+    async def page_screenshot(self, options: PageScreenshotOptions):
+        page = await self.browser.new_page()
         await page.goto(options.url, wait_until="networkidle")
-        custom_css = cls.custom_css
+        custom_css = self.custom_css
         await page.add_style_tag(content=custom_css)
         if options.css:
             await page.add_style_tag(content=options.css)
-        screenshot = await cls.make_screenshot(page, await page.query_selector("body"))
-        if not cls.debug:
+        screenshot = await self.make_screenshot(page, await page.query_selector("body"))
+        if not self.debug:
             await page.close()
         return screenshot
 
-    @classmethod
-    async def element_screenshot(cls, options: ElementScreenshotOptions):
+    async def element_screenshot(self, options: ElementScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
-        page = await Browser.new_page(width=options.width, height=options.height)
+        page = await self.browser.new_page(width=options.width, height=options.height)
         if options.content:
             await page.set_content(options.content)
         else:
             await page.goto(options.url, wait_until="networkidle")
-        custom_css = cls.custom_css
+        custom_css = self.custom_css
         await page.add_style_tag(content=custom_css)
         if options.css:
             await page.add_style_tag(content=options.css)
@@ -138,39 +166,38 @@ class WebRender:
                 });
                 window.scroll(0, 0)
               }""", elements_to_disable)
-        el, selected_ = await cls.select_element(options.element, page)
+        el, selected_ = await self.select_element(options.element, page)
         if not el:
             raise ElementNotFound
         if options.counttime:
-            await cls.add_count_box(page, selected_, start_time)
-        images = await cls.make_screenshot(page, el)
-        if not cls.debug:
+            await self.add_count_box(page, selected_, start_time)
+        images = await self.make_screenshot(page, el)
+        if not self.debug:
             await page.close()
         return images
 
-    @classmethod
-    async def section_screenshot(cls, options: SectionScreenshotOptions):
+    async def section_screenshot(self, options: SectionScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
-        page = await Browser.new_page(width=options.width, height=options.height)
+        page = await self.browser.new_page(width=options.width, height=options.height)
         if options.content:
             await page.set_content(options.content)
         else:
             await page.goto(options.url, wait_until="networkidle")
         if options.css:
-            await page.add_style_tag(content=options.css + cls.custom_css)
-        section, selected_ = await cls.select_element(options.section, page)
+            await page.add_style_tag(content=options.css + self.custom_css)
+        section, selected_ = await self.select_element(options.section, page)
         if not section:
             raise ElementNotFound
         if options.counttime:
-            await cls.add_count_box(page, selected_, start_time)
-        images = await cls.make_screenshot(page, section)
-        if not cls.debug:
+            await self.add_count_box(page, selected_, start_time)
+        images = await self.make_screenshot(page, section)
+        if not self.debug:
             await page.close()
         return images
 
-    @classmethod
-    async def source(cls, request: Request):
-        page = await Browser.new_page()
+
+    async def source(self, request: Request):
+        page = await self.browser.new_page()
         try:
             url = request.query_params.get("url")
             if not url:
@@ -181,5 +208,5 @@ class WebRender:
 
             return _source
         finally:
-            if not cls.debug:
+            if not self.debug:
                 await page.close()

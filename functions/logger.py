@@ -1,3 +1,6 @@
+import os
+import sys
+
 from loguru import logger
 
 
@@ -11,7 +14,7 @@ def basic_logger_format():
 
 
 class LoggingLogger:
-    def __init__(self, debug: bool = False):
+    def __init__(self, debug: bool = False, logs_path: str = None):
         self.log = logger
         self.log.remove()
         self.debug = logger.debug
@@ -24,3 +27,19 @@ class LoggingLogger:
 
         if debug:
             self.log.warning("Debug mode is enabled.")
+
+        self.log.add(
+            sys.stderr,
+            format=basic_logger_format(),
+            level="DEBUG" if debug else "INFO",
+            colorize=True,
+        )
+
+        if logs_path is not None:
+            log_file_path = os.path.join(logs_path, f"webrender_{{time:YYYY-MM-DD}}.log")
+            self.log.add(
+                log_file_path,
+                format=basic_logger_format(),
+                retention="10 days",
+                encoding="utf8",
+            )

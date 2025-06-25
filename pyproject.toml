@@ -2,17 +2,17 @@
 name = "re-oa-webrender"
 version = "0.1.0"
 description = ""
-authors = ["yzhh <31803608+OasisAkari@users.noreply.github.com>"]
+authors = ["yzhh <OasisAkari@gmail.com>"]
 readme = "README.md"
-package-mode = false
+package-mode = true
 
 [tool.poetry.dependencies]
 python = "^3.12"
-uvicorn = "^0.32.1"
-fastapi = "^0.115.5"
-pydantic = "^2.10.2"
-playwright = "^1.49.0"
-orjson = "^3.10.12"
+uvicorn = "^0.34.3"
+fastapi = "^0.115.13"
+pydantic = "^2.11.7"
+playwright = "^1.52.0"
+orjson = "^3.10.18"
 playwright-stealth = {git = "https://github.com/Mattwmaster58/playwright_stealth", rev = "rc4"}
 loguru = "^0.7.3"
 jinja2 = "^3.1.6"
