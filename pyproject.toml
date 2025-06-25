@@ -1,6 +1,6 @@
 [project]
 name = "akari-bot-webrender"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = [
     {name= "OasisAkari", email = "OasisAkari@gmail.com"}
@@ -16,9 +16,7 @@ license = "MIT"
 [tool.poetry]
 package-mode = true
 packages = [
-    { include = "constants" },
-    { include = "functions" },
-    { include = "server" },
+    { include = "akari_bot_webrender" },
 ]
 include = ["templates"]
 

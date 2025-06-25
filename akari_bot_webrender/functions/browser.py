@@ -4,7 +4,7 @@ from typing import Literal
 from playwright import async_api
 from playwright.async_api import Playwright, Browser as BrowserProcess, BrowserContext, ViewportSize
 from playwright_stealth import Stealth
-from constants import base_user_agent, base_width, base_height
+from ..constants import base_user_agent, base_width, base_height
 
 from .logger import LoggingLogger
 

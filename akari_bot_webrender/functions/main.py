@@ -7,7 +7,7 @@ from fastapi import Request
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import Page, ElementHandle, FloatRect
 
-from constants import templates_path, elements_to_disable, max_screenshot_height
+from ..constants import templates_path, elements_to_disable, max_screenshot_height
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
 from .options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions

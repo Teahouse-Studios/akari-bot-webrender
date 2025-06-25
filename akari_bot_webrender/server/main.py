@@ -4,9 +4,9 @@ import orjson as json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import ORJSONResponse
 
-from functions.exceptions import ElementNotFound, RequiredURL
-from functions.main import WebRender
-from functions.options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, \
+from ..functions.exceptions import ElementNotFound, RequiredURL
+from ..functions.main import WebRender
+from ..functions.options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, \
     SectionScreenshotOptions
 
 with open('config.json', 'r') as f:

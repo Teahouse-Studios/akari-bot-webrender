@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from constants import base_width, base_height
+from ..constants import base_width, base_height
 
 
 class ScreenshotOptions(BaseModel):
