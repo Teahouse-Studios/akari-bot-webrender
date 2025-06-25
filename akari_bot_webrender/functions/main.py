@@ -3,6 +3,7 @@ import base64
 import datetime
 import math
 import traceback
+from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import Page, ElementHandle, FloatRect
@@ -22,7 +23,7 @@ from loguru import logger
 
 env = Environment(loader=FileSystemLoader(templates_path), autoescape=True)
 
-_remote_webrender_url: str = None
+_remote_webrender_url: Optional[str] = None
 
 
 def webrender_fallback(func):
@@ -148,7 +149,7 @@ class WebRender:
     @webrender_fallback
     async def legacy_screenshot(self, options: LegacyScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=options.width, height=options.height)
+        page = await self.browser.new_page(width=options.width, height=options.height, locale=options.locale)
         rendered_html = env.get_template("content.html").render(language='zh-CN', content=options.content)
         await page.set_content(rendered_html, wait_until='networkidle')
         if options.mw:
@@ -167,7 +168,7 @@ class WebRender:
 
     @webrender_fallback
     async def page_screenshot(self, options: PageScreenshotOptions):
-        page = await self.browser.new_page()
+        page = await self.browser.new_page(locale=options.locale)
         await page.goto(options.url, wait_until="networkidle")
         custom_css = self.custom_css
         await page.add_style_tag(content=custom_css)
@@ -181,7 +182,7 @@ class WebRender:
     @webrender_fallback
     async def element_screenshot(self, options: ElementScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=options.width, height=options.height)
+        page = await self.browser.new_page(width=options.width, height=options.height, locale=options.locale)
         if options.content:
             await page.set_content(options.content)
         else:
@@ -229,7 +230,7 @@ class WebRender:
     @webrender_fallback
     async def section_screenshot(self, options: SectionScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=options.width, height=options.height)
+        page = await self.browser.new_page(width=options.width, height=options.height, locale=options.locale)
         if options.content:
             await page.set_content(options.content)
         else:
@@ -248,7 +249,7 @@ class WebRender:
 
     @webrender_fallback
     async def source(self, options: SourceOptions):
-        page = await self.browser.new_page()
+        page = await self.browser.new_page(locale=options.locale)
         try:
             url = options.url
             if not url:

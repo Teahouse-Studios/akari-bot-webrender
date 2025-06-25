@@ -24,9 +24,8 @@ class LoggingLogger:
         self.error = logger.error
         self.critical = logger.critical
         self.debug_flag = debug
+        self.log_path = logs_path
 
-        if debug:
-            self.log.warning("Debug mode is enabled.")
 
         self.log.add(
             sys.stderr,
@@ -43,3 +42,5 @@ class LoggingLogger:
                 retention="10 days",
                 encoding="utf8",
             )
+        if debug:
+            self.log.warning("Debug mode is enabled.")
