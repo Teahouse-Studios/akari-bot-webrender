@@ -47,7 +47,7 @@ jobs:
           # NOTE: put your own distribution build steps here.
           # python -m pip install build
           # python -m build
-          portry lock
+          poetry lock
           poetry build
           
 
