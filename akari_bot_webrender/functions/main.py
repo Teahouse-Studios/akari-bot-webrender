@@ -10,7 +10,7 @@ from playwright.async_api import Page, ElementHandle, FloatRect
 from ..constants import templates_path, elements_to_disable, max_screenshot_height
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
-from .options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions, \
+from .options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions, \
     SourceOptions
 
 import httpx
@@ -146,7 +146,7 @@ class WebRender:
 
 
     @webrender_fallback
-    async def legacy_screenshot(self, options: ScreenshotOptions):
+    async def legacy_screenshot(self, options: LegacyScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
         page = await self.browser.new_page(width=options.width, height=options.height)
         rendered_html = env.get_template("content.html").render(language='zh-CN', content=options.content)

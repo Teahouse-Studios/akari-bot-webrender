@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from ..constants import base_width, base_height
 
 
-class ScreenshotOptions(BaseModel):
+class LegacyScreenshotOptions(BaseModel):
     content: str = None
     width: int = base_width
     height: int = base_height
