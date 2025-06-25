@@ -39,7 +39,7 @@ def webrender_fallback(func):
             logger.error(f"WebRender processing failed: {e}")
             logger.error(traceback.format_exc())
             try:
-                if _remote_webrender_url is not None:
+                if _remote_webrender_url:
                     logger.info(f"Trying get content from remote web render...")
                     remote_url = _remote_webrender_url + func.__name__ + '/'
                     data = options.model_dump_json(exclude_none=True)
@@ -99,7 +99,6 @@ class WebRender:
     async def make_screenshot(self, page: Page, el: ElementHandle, screenshot_height=max_screenshot_height) -> list:
         await page.evaluate("window.scroll(0, 0)")
         await page.route('**/*', lambda route: route.abort())
-        await page.wait_for_load_state("networkidle")
         content_size = await el.bounding_box()
         dpr = page.viewport_size.get("deviceScaleFactor", 1)
         screenshot_height = math.floor(screenshot_height / dpr)
