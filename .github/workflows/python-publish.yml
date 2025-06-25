@@ -11,7 +11,7 @@ name: Upload Python Package
 on:
   release:
     types: [published]
-
+  workflow_dispatch:
 permissions:
   contents: read
 
@@ -28,13 +28,26 @@ jobs:
 
       - name: Install poetry
         uses: abatilo/actions-poetry@v4
+        
+      - name: Setup a local virtual environment (if no poetry.toml file)
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+          
       - name: Install the project dependencies
         run: poetry install
+        
       - name: Build release distributions
         run: |
           # NOTE: put your own distribution build steps here.
           # python -m pip install build
           # python -m build
+          poetry lock
           poetry build
           
 
