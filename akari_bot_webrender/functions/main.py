@@ -28,8 +28,12 @@ _remote_webrender_url: Optional[str] = None
 
 def webrender_fallback(func):
     async def wrapper(self, options):
+        if not self.browser.browser:
+            logger.warning("WebRender browser is not initialized.")
+            return None
 
         try:
+            logger.info(func.__name__ + "function called with options: " + str(options))
             return await func(self, options)
         except Exception as e:
             logger.error(f"WebRender processing failed: {e}")
