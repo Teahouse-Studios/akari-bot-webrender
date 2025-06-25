@@ -2,30 +2,76 @@ import asyncio
 import base64
 import datetime
 import math
+import traceback
 
-from fastapi import Request
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import Page, ElementHandle, FloatRect
 
 from ..constants import templates_path, elements_to_disable, max_screenshot_height
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
-from .options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions
+from .options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions, \
+    SourceOptions
+
+import httpx
+
+import orjson as json
+
+from loguru import logger
+
 
 env = Environment(loader=FileSystemLoader(templates_path), autoescape=True)
+
+_remote_webrender_url: str = None
+
+
+def webrender_fallback(func):
+    async def wrapper(self, options):
+
+        try:
+            return await func(self, options)
+        except Exception as e:
+            logger.error(f"WebRender processing failed: {e}")
+            logger.error(traceback.format_exc())
+            try:
+                if _remote_webrender_url is not None:
+                    logger.info(f"Trying get content from remote web render...")
+                    remote_url = _remote_webrender_url + func.__name__ + '/'
+                    data = options.model_dump_json(exclude_none=True)
+                    logger.info(f"Remote URL: {remote_url}, Options: {data}")
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.post(
+                            remote_url,
+                            data=data,
+                            timeout=30
+                        )
+                        if resp.status_code != 200:
+                            logger.error(f"Failed to render: {resp.text}, status code: {resp.status_code}")
+                            return None
+                        return json.loads(resp.read())
+            except Exception as e:
+                logger.error(f"Remote WebRender processing failed: {e}")
+                logger.error(traceback.format_exc())
+                return None
+
+    return wrapper
 
 class WebRender:
     browser: Browser = None
     debug: bool = False
     custom_css = open(templates_path + '/custom.css', 'r', encoding='utf-8').read()
+    remote_webrender_url = None
 
-    def __init__(self, debug: bool = False):
+    def __init__(self, debug: bool = False, remote_webrender_url=None):
         """
         :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
         """
-
-
         self.debug = debug
+        self.remote_webrender_url = remote_webrender_url
+        if self.remote_webrender_url and self.remote_webrender_url[-1] != '/':
+            self.remote_webrender_url += '/'
+        global _remote_webrender_url
+        _remote_webrender_url = self.remote_webrender_url
 
         if not WebRender.browser:
             self.browser = Browser(debug=debug)
@@ -44,6 +90,7 @@ class WebRender:
                 if rtn is not None:
                     return rtn, obj
 
+
     async def make_screenshot(self, page: Page, el: ElementHandle, screenshot_height=max_screenshot_height) -> list:
         await page.evaluate("window.scroll(0, 0)")
         await page.route('**/*', lambda route: route.abort())
@@ -51,7 +98,7 @@ class WebRender:
         content_size = await el.bounding_box()
         dpr = page.viewport_size.get("deviceScaleFactor", 1)
         screenshot_height = math.floor(screenshot_height / dpr)
-        self.logger.debug(f"Content size: {content_size}, DPR: {dpr}, Screenshot height: {screenshot_height}")
+        self.logger.info(f"Content size: {content_size}, DPR: {dpr}, Screenshot height: {screenshot_height}")
 
         y_pos = content_size.get("y")
         total_content_height = content_size.get("y")
@@ -65,7 +112,7 @@ class WebRender:
                 content_height = content_size.get("height") + content_size.get("y") - total_content_height + max_screenshot_height
             await page.evaluate(f"window.scroll({content_size.get("x")}, {y_pos})")
             await asyncio.sleep(3)
-            self.logger.debug("X:" + str(content_size.get("x")) + " Y:" + str(y_pos)+ " Width:" + str(content_size.get("width")) + " Height:" + str(content_height))
+            self.logger.info("X:" + str(content_size.get("x")) + " Y:" + str(y_pos)+ " Width:" + str(content_size.get("width")) + " Height:" + str(content_height))
 
             img = await page.screenshot(type='png',
                                         clip=FloatRect(x=content_size.get("x"),
@@ -98,6 +145,7 @@ class WebRender:
             }""", {'selected_element': element, 'start_time': int(start_time * 1000)})
 
 
+    @webrender_fallback
     async def legacy_screenshot(self, options: ScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
         page = await self.browser.new_page(width=options.width, height=options.height)
@@ -117,6 +165,7 @@ class WebRender:
             await page.close()
         return images
 
+    @webrender_fallback
     async def page_screenshot(self, options: PageScreenshotOptions):
         page = await self.browser.new_page()
         await page.goto(options.url, wait_until="networkidle")
@@ -129,6 +178,7 @@ class WebRender:
             await page.close()
         return screenshot
 
+    @webrender_fallback
     async def element_screenshot(self, options: ElementScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
         page = await self.browser.new_page(width=options.width, height=options.height)
@@ -176,6 +226,7 @@ class WebRender:
             await page.close()
         return images
 
+    @webrender_fallback
     async def section_screenshot(self, options: SectionScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
         page = await self.browser.new_page(width=options.width, height=options.height)
@@ -195,11 +246,11 @@ class WebRender:
             await page.close()
         return images
 
-
-    async def source(self, request: Request):
+    @webrender_fallback
+    async def source(self, options: SourceOptions):
         page = await self.browser.new_page()
         try:
-            url = request.query_params.get("url")
+            url = options.url
             if not url:
                 raise RequiredURL
 

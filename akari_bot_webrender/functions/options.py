@@ -35,3 +35,6 @@ class SectionScreenshotOptions(BaseModel):
     height: int = base_height
     counttime: bool = True
     tracing: bool = False
+
+class SourceOptions(BaseModel):
+    url: str = None

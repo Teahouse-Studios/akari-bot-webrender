@@ -7,7 +7,7 @@ from fastapi.responses import ORJSONResponse
 from ..functions.exceptions import ElementNotFound, RequiredURL
 from ..functions.main import WebRender
 from ..functions.options import ScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, \
-    SectionScreenshotOptions
+    SectionScreenshotOptions, SourceOptions
 
 with open('config.json', 'r') as f:
     config = json.loads(f.read())['server']
@@ -27,8 +27,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.post("/")
-async def _screenshot(options: ScreenshotOptions):
+@app.post("/legacy_screenshot/")
+async def legacy_screenshot(options: ScreenshotOptions):
     try:
         images = await webrender.legacy_screenshot(options)
     except ElementNotFound:
@@ -60,10 +60,11 @@ async def section_screenshot(options: SectionScreenshotOptions):
     return ORJSONResponse(content=images)
 
 
-@app.get("/source/")
-async def source(request: Request):
+
+@app.post("/source/")
+async def source(options: SourceOptions):
     try:
-        source = await webrender.source(request)
+        source = await webrender.source(options)
     except RequiredURL:
         raise HTTPException(status_code=400, detail="URL parameter is required")
     return ORJSONResponse(content=source)
