@@ -257,6 +257,10 @@ class WebRender:
 
             await page.goto(url, wait_until="networkidle")
             _source = await page.content()
+            if options.raw_text:
+                _source = await page.query_selector("pre")
+                return await _source.inner_text()
+
 
             return _source
         finally:

@@ -42,4 +42,5 @@ class SectionScreenshotOptions(BaseModel):
 
 class SourceOptions(BaseModel):
     url: str = None
+    raw_text: bool = False
     locale: str = 'zh_cn'
