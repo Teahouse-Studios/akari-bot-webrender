@@ -16,12 +16,12 @@ def basic_logger_format():
 class LoggingLogger:
     def __init__(self, debug: bool = False, logs_path: str = None):
         self.log = logger.bind(name="WebRender")
-        self.debug = logger.debug
-        self.info = logger.info
-        self.success = logger.success
-        self.warning = logger.warning
-        self.error = logger.error
-        self.critical = logger.critical
+        self.debug = self.log.debug
+        self.info = self.log.info
+        self.success = self.log.success
+        self.warning = self.log.warning
+        self.error = self.log.error
+        self.critical = self.log.critical
         self.debug_flag = debug
         self.log_path = logs_path
 
