@@ -15,8 +15,7 @@ def basic_logger_format():
 
 class LoggingLogger:
     def __init__(self, debug: bool = False, logs_path: str = None):
-        self.log = logger
-        self.log.remove()
+        self.log = logger.bind(name="WebRender")
         self.debug = logger.debug
         self.info = logger.info
         self.success = logger.success
@@ -32,6 +31,7 @@ class LoggingLogger:
             format=basic_logger_format(),
             level="DEBUG" if debug else "INFO",
             colorize=True,
+            filter=lambda record: record["extra"].get("name") == "WebRender",
         )
 
         if logs_path is not None:
@@ -41,6 +41,7 @@ class LoggingLogger:
                 format=basic_logger_format(),
                 retention="10 days",
                 encoding="utf8",
+                filter=lambda record: record["extra"].get("name") == "WebRender",
             )
         if debug:
             self.log.warning("Debug mode is enabled.")
