@@ -23,14 +23,16 @@ from loguru import logger
 
 env = Environment(loader=FileSystemLoader(templates_path), autoescape=True)
 
-_remote_webrender_url: Optional[str] = None
-
 
 def webrender_fallback(func):
     async def wrapper(self, options):
-        if not self.browser.browser:
+        if not self.browser.browser and not self.remote_only:
             logger.warning("WebRender browser is not initialized.")
             return None
+        request_remote = False
+        if self.remote_webrender_url and self.remote_only:
+            logger.warning("Local WebRender is disabled, using remote WebRender only.")
+            request_remote = True
 
         try:
             logger.info(func.__name__ + "function called with options: " + str(options))
@@ -38,10 +40,13 @@ def webrender_fallback(func):
         except Exception as e:
             logger.error(f"WebRender processing failed: {e}")
             logger.error(traceback.format_exc())
+            if self.remote_webrender_url:
+                request_remote = True
+        if request_remote:
             try:
-                if _remote_webrender_url:
+                if self.remote_webrender_url:
                     logger.info(f"Trying get content from remote web render...")
-                    remote_url = _remote_webrender_url + func.__name__ + '/'
+                    remote_url = self.remote_webrender_url + func.__name__ + '/'
                     data = options.model_dump_json(exclude_none=True)
                     logger.info(f"Remote URL: {remote_url}, Options: {data}")
                     async with httpx.AsyncClient() as client:
@@ -57,7 +62,7 @@ def webrender_fallback(func):
             except Exception as e:
                 logger.error(f"Remote WebRender processing failed: {e}")
                 logger.error(traceback.format_exc())
-                return None
+        return None
 
     return wrapper
 
@@ -66,8 +71,9 @@ class WebRender:
     debug: bool = False
     custom_css = open(templates_path + '/custom.css', 'r', encoding='utf-8').read()
     remote_webrender_url = None
+    remote_only = False
 
-    def __init__(self, debug: bool = False, remote_webrender_url=None):
+    def __init__(self, debug: bool = False, remote_webrender_url=None, remote_only: bool = False):
         """
         :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
         """
@@ -75,8 +81,7 @@ class WebRender:
         self.remote_webrender_url = remote_webrender_url
         if self.remote_webrender_url and self.remote_webrender_url[-1] != '/':
             self.remote_webrender_url += '/'
-        global _remote_webrender_url
-        _remote_webrender_url = self.remote_webrender_url
+        self.remote_only = remote_only
 
         if not WebRender.browser:
             self.browser = Browser(debug=debug)
