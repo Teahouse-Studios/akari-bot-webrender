@@ -10,3 +10,7 @@ span.heimu a.external, span.heimu a.external:visited, span.heimu a.extiw, span.h
 .tabber-container-infobox .tabber .tabbertab {
   display: unset !important;
 }
+
+.webrender-selected-element{
+  padding: 15px;
+}
