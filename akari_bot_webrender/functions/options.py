@@ -10,12 +10,14 @@ class LegacyScreenshotOptions(BaseModel):
     mw: bool = False
     tracing: bool = False
     counttime: bool = True
-    locale: str = 'zh_cn'
+    locale: str = "zh_cn"
+
 
 class PageScreenshotOptions(BaseModel):
     url: str = None
     css: str = None
-    locale: str = 'zh_cn'
+    locale: str = "zh_cn"
+
 
 class ElementScreenshotOptions(BaseModel):
     element: str | list = None
@@ -26,7 +28,7 @@ class ElementScreenshotOptions(BaseModel):
     height: int = base_height
     counttime: bool = True
     tracing: bool = False
-    locale: str = 'zh_cn'
+    locale: str = "zh_cn"
 
 
 class SectionScreenshotOptions(BaseModel):
@@ -38,9 +40,10 @@ class SectionScreenshotOptions(BaseModel):
     height: int = base_height
     counttime: bool = True
     tracing: bool = False
-    locale: str = 'zh_cn'
+    locale: str = "zh_cn"
+
 
 class SourceOptions(BaseModel):
     url: str = None
     raw_text: bool = False
-    locale: str = 'zh_cn'
+    locale: str = "zh_cn"

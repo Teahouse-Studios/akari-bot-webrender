@@ -60,21 +60,22 @@ async def section_screenshot(options: SectionScreenshotOptions):
     return ORJSONResponse(content=images)
 
 
-
 @app.post("/source/")
 async def source(options: SourceOptions):
     try:
         source = await webrender.source(options)
     except RequiredURL:
-        raise HTTPException(status_code=400, detail="URL parameter is required")
+        raise HTTPException(
+            status_code=400, detail="URL parameter is required")
     return ORJSONResponse(content=source)
 
 
 def run():
-    import uvicorn # noqa
+    import uvicorn  # noqa
 
     try:
-        webrender.logger.info(f"Server starting on {config['host']}:{config['port']}")
+        webrender.logger.info(f"Server starting on {
+                              config['host']}:{config['port']}")
         uvicorn.run(app, host=config["host"], port=config["port"])
     except KeyboardInterrupt:
         webrender.logger.info("Server stopped")

@@ -1,5 +1,7 @@
 import os
 import sys
+import traceback
+from typing import Optional
 
 from loguru import logger
 
@@ -16,6 +18,7 @@ def basic_logger_format():
 class LoggingLogger:
     def __init__(self, debug: bool = False, logs_path: str = None):
         self.log = logger.bind(name="WebRender")
+        self.trace = logger.trace
         self.debug = self.log.debug
         self.info = self.log.info
         self.success = self.log.success
@@ -24,7 +27,6 @@ class LoggingLogger:
         self.critical = self.log.critical
         self.debug_flag = debug
         self.log_path = logs_path
-
 
         self.log.add(
             sys.stderr,
@@ -35,13 +37,33 @@ class LoggingLogger:
         )
 
         if logs_path is not None:
-            log_file_path = os.path.join(logs_path, f"webrender_{{time:YYYY-MM-DD}}.log")
             self.log.add(
-                log_file_path,
+                sink=os.path.join(
+                    logs_path, f"webrender_debug_{{time:YYYY-MM-DD}}.log"),
                 format=basic_logger_format(),
-                retention="10 days",
+                rotation="00:00",
+                retention="1 day",
+                level="DEBUG",
+                filter=lambda record: record["level"].name == "DEBUG" and record["extra"].get(
+                    "name") == "WebRender",
                 encoding="utf8",
-                filter=lambda record: record["extra"].get("name") == "WebRender",
+            )
+            self.log.add(
+                sink=os.path.join(
+                    logs_path, f"webrender_{{time:YYYY-MM-DD}}.log"),
+                format=basic_logger_format(),
+                rotation="00:00",
+                retention="10 days",
+                level="INFO",
+                encoding="utf8",
+                filter=lambda record: record["extra"].get(
+                    "name") == "WebRender",
             )
         if debug:
             self.log.warning("Debug mode is enabled.")
+
+    def exception(self, message: Optional[str] = None):
+        if message:
+            self.error(f"{message}\n{traceback.format_exc()}")
+        else:
+            self.error(traceback.format_exc())
