@@ -18,7 +18,7 @@ from .options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScre
     SourceOptions
 
 
-env = Environment(loader=FileSystemLoader(templates_path), autoescape=True)
+env = Environment(loader=FileSystemLoader(templates_path), autoescape=True, enable_async=True)
 
 
 def webrender_fallback(func):
@@ -161,8 +161,7 @@ class WebRender:
     async def legacy_screenshot(self, options: LegacyScreenshotOptions):
         start_time = datetime.datetime.now().timestamp()
         page = await self.browser.new_page(width=options.width, height=options.height, locale=options.locale)
-        rendered_html = env.get_template("content.html").render(
-            language="zh-CN", content=options.content)
+        rendered_html = await env.get_template("content.html").render_async(language='zh-CN', contents=options.content)
         await page.set_content(rendered_html, wait_until="networkidle")
         if options.mw:
             selector = "body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)"
