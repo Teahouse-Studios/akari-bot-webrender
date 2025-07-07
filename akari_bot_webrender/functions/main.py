@@ -36,9 +36,8 @@ def webrender_fallback(func):
             logger.info(func.__name__ +
                         "function called with options: " + str(options))
             return await func(self, options)
-        except Exception:
+        except Exception as e:
             logger.error(f"WebRender processing failed: {e}")
-            logger.error()
             if self.remote_webrender_url:
                 request_remote = True
         if request_remote:
