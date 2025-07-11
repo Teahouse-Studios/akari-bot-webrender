@@ -2,7 +2,6 @@ import asyncio
 import base64
 import datetime
 import math
-import traceback
 from typing import Optional
 
 import httpx
@@ -10,12 +9,11 @@ import orjson as json
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import Page, ElementHandle, FloatRect
 
-from ..constants import templates_path, elements_to_disable, max_screenshot_height
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
 from .options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions, \
     SourceOptions
-
+from ..constants import templates_path, elements_to_disable, max_screenshot_height
 
 env = Environment(loader=FileSystemLoader(templates_path), autoescape=True, enable_async=True)
 
