@@ -98,6 +98,7 @@ class WebRender:
                 rtn = await pg.query_selector(obj)
                 if rtn is not None:
                     return rtn, obj
+        return None, None
 
     async def make_screenshot(self, page: Page, el: ElementHandle, screenshot_height: int = max_screenshot_height) -> list:
         await page.evaluate("window.scroll(0, 0)")
