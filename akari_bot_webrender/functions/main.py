@@ -30,15 +30,15 @@ def webrender_fallback(func):
             self.logger.warning(
                 "Local WebRender is disabled, using remote WebRender only.")
             request_remote = True
-
-        try:
-            self.logger.info(func.__name__ +
-                        "function called with options: " + str(options))
-            return await func(self, options)
-        except Exception:
-            self.logger.exception(f"WebRender processing failed with options: {options}:")
-            if self.remote_webrender_url:
-                request_remote = True
+        else:
+            try:
+                self.logger.info(func.__name__ +
+                            "function called with options: " + str(options))
+                return await func(self, options)
+            except Exception:
+                self.logger.exception(f"WebRender processing failed with options: {options}:")
+                if self.remote_webrender_url:
+                    request_remote = True
         if request_remote:
             try:
                 if self.remote_webrender_url:
@@ -51,7 +51,8 @@ def webrender_fallback(func):
                         resp = await client.post(
                             remote_url,
                             data=data,
-                            timeout=30
+                            timeout=30,
+                            follow_redirects=True
                         )
                         if resp.status_code != 200:
                             self.logger.error(f"Failed to render: {
