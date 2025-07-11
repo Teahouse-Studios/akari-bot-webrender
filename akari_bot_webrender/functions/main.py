@@ -8,7 +8,6 @@ from typing import Optional
 import httpx
 import orjson as json
 from jinja2 import Environment, FileSystemLoader
-from loguru import logger
 from playwright.async_api import Page, ElementHandle, FloatRect
 
 from ..constants import templates_path, elements_to_disable, max_screenshot_height
@@ -24,30 +23,30 @@ env = Environment(loader=FileSystemLoader(templates_path), autoescape=True, enab
 def webrender_fallback(func):
     async def wrapper(self, options):
         if not self.browser.browser and not self.remote_only:
-            logger.warning("WebRender browser is not initialized.")
+            self.logger.warning("WebRender browser is not initialized.")
             return None
         request_remote = False
         if self.remote_webrender_url and self.remote_only:
-            logger.warning(
+            self.logger.warning(
                 "Local WebRender is disabled, using remote WebRender only.")
             request_remote = True
 
         try:
-            logger.info(func.__name__ +
+            self.logger.info(func.__name__ +
                         "function called with options: " + str(options))
             return await func(self, options)
-        except Exception as e:
-            logger.error(f"WebRender processing failed: {e}")
+        except Exception:
+            self.logger.exception(f"WebRender processing failed with options: {options}:")
             if self.remote_webrender_url:
                 request_remote = True
         if request_remote:
             try:
                 if self.remote_webrender_url:
-                    logger.info(
+                    self.logger.info(
                         f"Trying get content from remote web render...")
                     remote_url = self.remote_webrender_url + func.__name__ + "/"
                     data = options.model_dump_json(exclude_none=True)
-                    logger.info(f"Remote URL: {remote_url}, Options: {data}")
+                    self.logger.info(f"Remote URL: {remote_url}, Options: {data}")
                     async with httpx.AsyncClient() as client:
                         resp = await client.post(
                             remote_url,
@@ -55,12 +54,12 @@ def webrender_fallback(func):
                             timeout=30
                         )
                         if resp.status_code != 200:
-                            logger.error(f"Failed to render: {
+                            self.logger.error(f"Failed to render: {
                                          resp.text}, status code: {resp.status_code}")
                             return None
                         return json.loads(resp.read())
             except Exception:
-                logger.error(f"Remote WebRender processing failed: \n{traceback.format_exc()}")
+                self.logger.exception(f"Remote WebRender processing failed: ")
         return None
 
     return wrapper
