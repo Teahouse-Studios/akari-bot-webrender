@@ -7,13 +7,14 @@ from typing import Optional
 import httpx
 import orjson as json
 from jinja2 import Environment, FileSystemLoader
+from typing import Literal
 from playwright.async_api import Page, ElementHandle, FloatRect
 
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
 from .options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions, \
     SourceOptions
-from ..constants import templates_path, elements_to_disable, max_screenshot_height
+from ..constants import templates_path, elements_to_disable, max_screenshot_height, base_width, base_height
 
 env = Environment(loader=FileSystemLoader(templates_path), autoescape=True, enable_async=True)
 
@@ -99,7 +100,8 @@ class WebRender:
                     return rtn, obj
         return None, None
 
-    async def make_screenshot(self, page: Page, el: ElementHandle, screenshot_height: int = max_screenshot_height) -> list:
+    async def make_screenshot(self, page: Page, el: ElementHandle, screenshot_height: int = max_screenshot_height,
+                              output_type: Literal['png', 'jpeg'] = 'jpeg', output_quality: int = 90) -> list[str]:
         await page.evaluate("window.scroll(0, 0)")
         await page.route("**/*", lambda route: route.abort())
         content_size = await el.bounding_box()
@@ -124,7 +126,8 @@ class WebRender:
             self.logger.info("X:" + str(content_size.get("x")) + " Y:" + str(y_pos) +
                              " Width:" + str(content_size.get("width")) + " Height:" + str(content_height))
 
-            img = await page.screenshot(type="png",
+            img = await page.screenshot(type=output_type,
+                                        quality=output_quality if output_type == 'jpeg' else None,
                                         clip=FloatRect(x=content_size.get("x"),
                                                        y=y_pos,
                                                        width=content_size.get(
@@ -155,51 +158,91 @@ class WebRender:
                 }
             }""", {"selected_element": element, "start_time": int(start_time * 1000)})
 
-    @webrender_fallback
-    async def legacy_screenshot(self, options: LegacyScreenshotOptions):
+
+    async def init_page(self, width=base_width, height=base_height, locale='zh_cn', content=None, url=None, css=None):
         start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=options.width, height=options.height, locale=options.locale)
-        rendered_html = await env.get_template("content.html").render_async(language='zh-CN', contents=options.content)
-        await page.set_content(rendered_html, wait_until="networkidle")
-        if options.mw:
-            selector = "body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)"
+        page = await self.browser.new_page(width=width, height=height, locale=locale)
+        if content:
+            await page.set_content(content, wait_until="networkidle")
         else:
-            selector = "body > *:not(script):not(style):not(link):not(meta)"
-        element_ = await page.query_selector(selector)
-        if not element_:
+            await page.goto(url, wait_until="networkidle")
+        custom_css = self.custom_css
+        await page.add_style_tag(content=custom_css)
+        if css:
+            await page.add_style_tag(content=css)
+        return page, start_time
+
+    async def select_element_and_screenshot(self,
+                                            elements: str | list,
+                                            page: Page,
+                                            start_time: float,
+                                            count_time=True,
+                                            output_type: Literal['png', 'jpeg'] = 'jpeg',
+                                            output_quality: int = 90):
+        el, selected_ = await self.select_element(elements, page)
+        if not el:
             raise ElementNotFound
-        if options.counttime:
-            await self.add_count_box(page, selector, start_time)
-        images = await self.make_screenshot(page, element_)
+        if count_time:
+            await self.add_count_box(page, selected_, start_time)
+        images = await self.make_screenshot(page, el, output_type=output_type,
+                                            output_quality=output_quality)
         if not self.debug:
             await page.close()
         return images
 
+
+    @webrender_fallback
+    async def legacy_screenshot(self, options: LegacyScreenshotOptions):
+        page, start_time = await self.init_page(
+            width=options.width,
+            height=options.height,
+            locale=options.locale,
+            content=await env.get_template("content.html").render_async(language='zh-CN', contents=options.content),
+            url=options.url,
+            css=options.css
+        )
+        images = await self.select_element_and_screenshot(
+            elements=["body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)" if options.mw
+                      else "body > *:not(script):not(style):not(link):not(meta)"],
+            page=page,
+            start_time=start_time,
+            count_time=options.counttime,
+            output_type=options.output_type,
+            output_quality=options.output_quality
+        )
+        return images
+
     @webrender_fallback
     async def page_screenshot(self, options: PageScreenshotOptions):
-        page = await self.browser.new_page(locale=options.locale)
-        await page.goto(options.url, wait_until="networkidle")
-        custom_css = self.custom_css
-        await page.add_style_tag(content=custom_css)
-        if options.css:
-            await page.add_style_tag(content=options.css)
-        screenshot = await self.make_screenshot(page, await page.query_selector("body"))
-        if not self.debug:
-            await page.close()
-        return screenshot
+        page, start_time = await self.init_page(
+            width=options.width,
+            height=options.height,
+            locale=options.locale,
+            content=options.content,
+            url=options.url,
+            css=options.css
+        )
+        images = await self.select_element_and_screenshot(
+            elements=['body'],
+            page=page,
+            start_time=start_time,
+            count_time=options.counttime,
+            output_type=options.output_type,
+            output_quality=options.output_quality
+        )
+        return images
 
     @webrender_fallback
     async def element_screenshot(self, options: ElementScreenshotOptions):
-        start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=options.width, height=options.height, locale=options.locale)
-        if options.content:
-            await page.set_content(options.content)
-        else:
-            await page.goto(options.url, wait_until="networkidle")
-        custom_css = self.custom_css
-        await page.add_style_tag(content=custom_css)
-        if options.css:
-            await page.add_style_tag(content=options.css)
+        page, start_time = await self.init_page(
+            width=options.width,
+            height=options.height,
+            locale=options.locale,
+            content=options.content,
+            url=options.url,
+            css=options.css
+        )
+
         # :rina: :rina: :rina: :rina:
         await page.evaluate("""(elements_to_disable) => {
                 const images = document.querySelectorAll("img")
@@ -226,34 +269,34 @@ class WebRender:
                 });
                 window.scroll(0, 0)
               }""", elements_to_disable)
-        el, selected_ = await self.select_element(options.element, page)
-        if not el:
-            raise ElementNotFound
-        if options.counttime:
-            await self.add_count_box(page, selected_, start_time)
-        images = await self.make_screenshot(page, el)
-        if not self.debug:
-            await page.close()
+        images = await self.select_element_and_screenshot(
+            elements=options.element,
+            page=page,
+            start_time=start_time,
+            count_time=options.counttime,
+            output_type=options.output_type,
+            output_quality=options.output_quality
+        )
         return images
 
     @webrender_fallback
     async def section_screenshot(self, options: SectionScreenshotOptions):
-        start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=options.width, height=options.height, locale=options.locale)
-        if options.content:
-            await page.set_content(options.content)
-        else:
-            await page.goto(options.url, wait_until="networkidle")
-        if options.css:
-            await page.add_style_tag(content=options.css + self.custom_css)
-        section, selected_ = await self.select_element(options.section, page)
-        if not section:
-            raise ElementNotFound
-        if options.counttime:
-            await self.add_count_box(page, selected_, start_time)
-        images = await self.make_screenshot(page, section)
-        if not self.debug:
-            await page.close()
+        page, start_time = await self.init_page(
+            width=options.width,
+            height=options.height,
+            locale=options.locale,
+            content=options.content,
+            url=options.url,
+            css=options.css
+        )
+        images = await self.select_element_and_screenshot(
+            elements=options.section,
+            page=page,
+            start_time=start_time,
+            count_time=options.counttime,
+            output_type=options.output_type,
+            output_quality=options.output_quality
+        )
         return images
 
     @webrender_fallback
