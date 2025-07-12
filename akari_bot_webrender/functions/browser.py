@@ -3,7 +3,7 @@ from typing import Literal
 
 from playwright import async_api
 from playwright.async_api import Playwright, Browser as BrowserProcess, BrowserContext, ViewportSize
-from playwright_stealth import Stealth
+from playwright_stealth import stealth_async
 
 from ..constants import base_user_agent, base_width, base_height
 from .logger import LoggingLogger
@@ -13,9 +13,6 @@ class Browser:
     playwright: Playwright = None
     browser: BrowserProcess = None
     contexts: dict[str, BrowserContext] = {}
-    stealth = Stealth(
-        init_scripts_only=True
-    )
     debug: bool = False
     logger: LoggingLogger
     user_agent = base_user_agent
@@ -49,7 +46,6 @@ class Browser:
                                                                                              viewport=ViewportSize(
                                                                                                  width=width, height=height),
                                                                                              locale=locale)
-                await self.stealth.apply_stealth_async(self.contexts[f"{width}x{height}_{locale}"])
                 self.logger.success("Successfully launched browser.")
             except Exception:
                 self.logger.exception("Failed to launch browser.")
@@ -63,6 +59,6 @@ class Browser:
                                                                                          viewport=ViewportSize(
                                                                                              width=width, height=height),
                                                                                          locale=locale)
-            await self.stealth.apply_stealth_async(self.contexts[f"{width}x{height}_{locale}"])
-
-        return await self.contexts[f"{width}x{height}_{locale}"].new_page()
+        page = await self.contexts[f"{width}x{height}_{locale}"].new_page()
+        await stealth_async(page)
+        return page

@@ -75,6 +75,17 @@ files = [
 ]
 
 [[package]]
+name = "fake-http-header"
+version = "0.3.5"
+description = "Generates random request fields for a http request header"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "fake_http_header-0.3.5-py3-none-any.whl", hash = "sha256:cd05f4bebf1b7e38b5f5c03d7fb820c0c17e87d9614fbee0afa39c32c7a2ad3c"},
+]
+
+[[package]]
 name = "fastapi"
 version = "0.115.13"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -450,21 +461,6 @@ greenlet = ">=3.1.1,<4.0.0"
 pyee = ">=13,<14"
 
 [[package]]
-name = "playwright-stealth"
-version = "2.0.0"
-description = "Make your playwright instance stealthy"
-optional = false
-python-versions = "<4.0,>=3.9"
-groups = ["main"]
-files = [
-    {file = "playwright_stealth-2.0.0-py3-none-any.whl", hash = "sha256:9eb3af1fd21619aac9fdd13a4a08141ed67159ac6310a94f7d2f758ba0cbe179"},
-    {file = "playwright_stealth-2.0.0.tar.gz", hash = "sha256:4f44d416d4226689895a4d1cfb40e8d137216c0c9710ea8f84bae2dbf1186fc5"},
-]
-
-[package.dependencies]
-playwright = ">=1.0.0,<2.0.0"
-
-[[package]]
 name = "pydantic"
 version = "2.11.7"
 description = "Data validation using Python type hints"
@@ -647,6 +643,22 @@ anyio = ">=3.6.2,<5"
 full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.18)", "pyyaml"]
 
 [[package]]
+name = "tf-playwright-stealth"
+version = "1.2.0"
+description = "Makes playwright stealthy like a ninja!"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "tf_playwright_stealth-1.2.0-py3-none-any.whl", hash = "sha256:26ee47ee89fa0f43c606fe37c188ea3ccd36f96ea90c01d167b768df457e7886"},
+    {file = "tf_playwright_stealth-1.2.0.tar.gz", hash = "sha256:7bb8d32d3e60324fbf6b9eeae540b8cd9f3b9e07baeb33b025dbc98ad47658ba"},
+]
+
+[package.dependencies]
+fake-http-header = ">=0.3.5,<0.4.0"
+playwright = ">=1,<2"
+
+[[package]]
 name = "typing-extensions"
 version = "4.14.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
@@ -711,4 +723,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "c5b3cfbc07f18144b652f08f46ff733133fcead8412fdf0d28fa1c56ea486ca3"
+content-hash = "50a04a4d8d1af472810d39ae9942a727ab544cac888516b81e900abe273406d9"
