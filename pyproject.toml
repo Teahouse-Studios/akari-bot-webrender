@@ -1,6 +1,6 @@
 [project]
 name = "akari-bot-webrender"
-version = "0.2.9"
+version = "0.3.0"
 description = ""
 authors = [
     {name= "OasisAkari", email = "OasisAkari@gmail.com"}

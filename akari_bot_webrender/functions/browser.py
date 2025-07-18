@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from typing import Literal
 
 from playwright import async_api
@@ -25,7 +26,8 @@ class Browser:
                            width: int = base_width,
                            height: int = base_height,
                            user_agent: str = user_agent,
-                           locale: str = "zh_cn"):
+                           locale: str = "zh_cn",
+                           executable_path: str | Path = None):
         if not self.playwright and not self.browser:
             self.logger.info("Launching browser...")
             try:
@@ -38,7 +40,7 @@ class Browser:
                 else:
                     raise ValueError(
                         "Unsupported browser type. Use \"chrome\" or \"firefox\".")
-                self.browser = await _b.launch(headless=not self.debug)
+                self.browser = await _b.launch(headless=not self.debug, executable_path=executable_path)
                 while not self.browser:
                     self.logger.info("Waiting for browser to launch...")
                     await asyncio.sleep(1)
