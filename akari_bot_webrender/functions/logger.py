@@ -17,8 +17,13 @@ def basic_logger_format():
 
 class LoggingLogger:
     def __init__(self, debug: bool = False, logs_path: str = None):
+        try:
+            logger.remove(0)
+        except ValueError:
+            # 如果没有默认的日志处理器，则忽略此错误
+            pass
         self.log = logger.bind(name="WebRender")
-        self.trace = logger.trace
+        self.trace = self.log.trace
         self.debug = self.log.debug
         self.info = self.log.info
         self.success = self.log.success
