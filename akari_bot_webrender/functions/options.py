@@ -15,6 +15,7 @@ class BaseOptions(BaseModel):
     url: str = None
     content: str = None
     css: str = None
+    stealth: bool = True
 
 
 class LegacyScreenshotOptions(BaseOptions):
@@ -34,3 +35,4 @@ class SourceOptions(BaseModel):
     url: str = None
     raw_text: bool = False
     locale: str = "zh_cn"
+    stealth: bool = True

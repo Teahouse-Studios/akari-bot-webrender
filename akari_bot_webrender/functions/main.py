@@ -159,9 +159,9 @@ class WebRender:
             }""", {"selected_element": element, "start_time": int(start_time * 1000)})
 
 
-    async def init_page(self, width=base_width, height=base_height, locale='zh_cn', content=None, url=None, css=None):
+    async def init_page(self, width=base_width, height=base_height, locale='zh_cn', content=None, url=None, css=None, stealth=True):
         start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=width, height=height, locale=locale)
+        page = await self.browser.new_page(width=width, height=height, locale=locale, stealth=stealth)
         if content:
             await page.set_content(content, wait_until="networkidle")
         else:
@@ -199,7 +199,8 @@ class WebRender:
             locale=options.locale,
             content=await env.get_template("content.html").render_async(language='zh-CN', contents=options.content),
             url=options.url,
-            css=options.css
+            css=options.css,
+            stealth=options.stealth
         )
         images = await self.select_element_and_screenshot(
             elements=["body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)" if options.mw
@@ -220,7 +221,8 @@ class WebRender:
             locale=options.locale,
             content=options.content,
             url=options.url,
-            css=options.css
+            css=options.css,
+            stealth=options.stealth
         )
         images = await self.select_element_and_screenshot(
             elements=['body'],
@@ -240,7 +242,8 @@ class WebRender:
             locale=options.locale,
             content=options.content,
             url=options.url,
-            css=options.css
+            css=options.css,
+            stealth=options.stealth
         )
 
         # :rina: :rina: :rina: :rina:
@@ -287,7 +290,8 @@ class WebRender:
             locale=options.locale,
             content=options.content,
             url=options.url,
-            css=options.css
+            css=options.css,
+            stealth=options.stealth
         )
         await page.evaluate("""({section, elements_to_disable}) => {
             console.log("Section: " + section)
@@ -364,13 +368,21 @@ class WebRender:
 
     @webrender_fallback
     async def source(self, options: SourceOptions):
-        page = await self.browser.new_page(locale=options.locale)
+        page = await self.browser.new_page(locale=options.locale, stealth=options.stealth)
         try:
             url = options.url
             if not url:
                 raise RequiredURL
 
-            await page.goto(url, wait_until="networkidle")
+            resp = await page.goto(url, wait_until="networkidle")
+            if resp.status != 200:
+                get = await page.request.fetch(url)
+                if resp.status != 200:
+                    self.logger.error(f"Failed to fetch URL: {url}, status code: {resp.status}")
+                    return None
+                else:
+                    return get.text()
+
             _source = await page.content()
             if options.raw_text:
                 _source = await page.query_selector("pre")
