@@ -8,6 +8,6 @@
 
 若你需要使用其进行二次开发，请使用你的包管理器安装 `akari-bot-webrender` 包，然后在你的代码中导入 `akari_bot_webrender` 模块。
 
-或是作为有远端部署的 WebRender 服务使用。你可以通过本项目根目录的 `run_server.py` 来启动一个 Web 服务器，在其它项目引入 `akari_bot_webrender` 后，配置 `remote_webrender_url` 指向该服务器地址即可。
+或是作为远端部署的 WebRender 服务使用。你可以通过本项目根目录的 `run_server.py` 来启动一个 Web 服务器，在其它项目引入 `akari_bot_webrender` 后，配置 `remote_webrender_url` 指向该服务器地址即可。
 
 若指定了 `remote_webrender_url`，则模块将在本地渲染失败时自动使用远程的 WebRender 服务进行渲染（或是配置 `remote_only` 项以强制指定使用远端渲染）。
