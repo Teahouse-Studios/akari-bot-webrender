@@ -22,7 +22,7 @@ class Browser:
         self.debug = debug
         self.logger = LoggingLogger(debug=debug, logs_path=log_path)
 
-    async def browser_init(self, browse_type: Literal["chrome", "firefox"] = "chrome",
+    async def browser_init(self, browse_type: Literal["chrome", "chromium", "firefox"] = "chromium",
                            width: int = base_width,
                            height: int = base_height,
                            user_agent: str = user_agent,
@@ -33,13 +33,13 @@ class Browser:
             try:
                 self.playwright = await async_api.async_playwright().start()
                 _b = None
-                if browse_type == "chrome":
+                if browse_type in ["chrome", "chromium"]:
                     _b = self.playwright.chromium
                 elif browse_type == "firefox":
                     _b = self.playwright.firefox
                 else:
                     raise ValueError(
-                        "Unsupported browser type. Use \"chrome\" or \"firefox\".")
+                        "Unsupported browser type. Use \"chromium\" or \"firefox\".")
                 self.browser = await _b.launch(headless=not self.debug, executable_path=executable_path)
                 while not self.browser:
                     self.logger.info("Waiting for browser to launch...")

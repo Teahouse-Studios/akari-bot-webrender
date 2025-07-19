@@ -2,6 +2,8 @@
   "server": {
     "host": "127.0.0.1",
     "port": 15551,
-    "debug": false
+    "debug": false,
+    "browser_type": "chromium",
+    "executable_path": ""
   }
 }
