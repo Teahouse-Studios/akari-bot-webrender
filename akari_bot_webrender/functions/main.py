@@ -32,7 +32,7 @@ def webrender_fallback(func):
         else:
             try:
                 self.logger.info(func.__name__ +
-                            "function called with options: " + str(options))
+                            " function called with options: " + str(options))
                 return await func(self, options)
             except Exception:
                 self.logger.exception(f"WebRender processing failed with options: {options}:")
