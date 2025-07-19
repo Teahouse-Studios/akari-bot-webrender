@@ -377,8 +377,8 @@ class WebRender:
             resp = await page.goto(url, wait_until="networkidle")
             if resp.status != 200:
                 get = await page.request.fetch(url)
-                if resp.status != 200:
-                    self.logger.error(f"Failed to fetch URL: {url}, status code: {resp.status}")
+                if get.status != 200:
+                    self.logger.error(f"Failed to fetch URL: {url}, status code: {get.status}")
                     return None
                 else:
                     return get.text()
