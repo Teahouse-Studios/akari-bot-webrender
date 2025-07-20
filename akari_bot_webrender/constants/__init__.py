@@ -13,7 +13,8 @@ elements_to_disable = [".notifications-placeholder",
                        "div#moe-open-in-app",
                        "div#age-gate",
                        ".va-variant-prompt",
-                       ".va-variant-prompt-mobile"]
+                       ".va-variant-prompt-mobile",
+                       ".mw-cookiewarning-container"]
 
 
 templates_path = os.path.abspath(os.path.join(

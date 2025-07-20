@@ -118,6 +118,12 @@ class WebRender:
         screenshot_height = math.floor(screenshot_height / dpr)
         self.logger.info(f"Content size: {content_size}, DPR: {
                          dpr}, Screenshot height: {screenshot_height}")
+        if content_size.get("height") < max_screenshot_height:
+            self.logger.info(
+                "Content height is less than max screenshot height, taking single screenshot.")
+            img = await el.screenshot(type=output_type,
+                                      quality=output_quality if output_type == 'jpeg' else None)
+            return [base64.b64encode(img).decode()]
 
         y_pos = content_size.get("y")
         total_content_height = content_size.get("y")
