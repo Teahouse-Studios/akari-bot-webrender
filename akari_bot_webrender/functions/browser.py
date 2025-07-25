@@ -49,8 +49,10 @@ class Browser:
                                                                                                  width=width, height=height),
                                                                                              locale=locale)
                 self.logger.success("Successfully launched browser.")
+                return True
             except Exception:
                 self.logger.exception("Failed to launch browser.")
+                return False
 
     async def close(self):
         await self.browser.close()
