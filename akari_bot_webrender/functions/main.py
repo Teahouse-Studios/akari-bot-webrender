@@ -92,7 +92,7 @@ class WebRender:
         if name:
             self.name = name
 
-        if not WebRender.browser:
+        if not self.browser:
             self.browser = Browser(debug=debug)
             self.browser_init = self.browser.browser_init
             self.browser_close = self.browser.close
