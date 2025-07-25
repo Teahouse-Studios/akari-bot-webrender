@@ -53,6 +53,9 @@ class Browser:
             except Exception:
                 self.logger.exception("Failed to launch browser.")
                 return False
+        else:
+            self.logger.info("Browser is already initialized.")
+            return True
 
     async def close(self):
         await self.browser.close()
