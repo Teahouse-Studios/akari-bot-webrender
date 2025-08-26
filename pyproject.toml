@@ -3,7 +3,9 @@ name = "akari-bot-webrender"
 version = "0.3.6"
 description = ""
 authors = [
-    {name= "OasisAkari", email = "OasisAkari@gmail.com"}
+    {name = "OasisAkari", email = "OasisAkari@gmail.com"},
+    {name = "cloudw233", email = "cloudw233@outlook.com"},
+    {name = "DoroWolf", email = "dorowolf314@gmail.com"}
 ]
 readme = "README.md"
 classifiers = [
