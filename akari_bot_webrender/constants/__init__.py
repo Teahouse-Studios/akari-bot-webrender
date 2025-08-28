@@ -14,7 +14,8 @@ elements_to_disable = [".notifications-placeholder",
                        "div#age-gate",
                        ".va-variant-prompt",
                        ".va-variant-prompt-mobile",
-                       ".mw-cookiewarning-container"]
+                       ".mw-cookiewarning-container",
+                       ".summer-notification-overlay"]
 
 
 templates_path = os.path.abspath(os.path.join(
