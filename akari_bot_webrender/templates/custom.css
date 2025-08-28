@@ -1,6 +1,13 @@
-span.heimu a.external, span.heimu a.external:visited, span.heimu a.extiw, span.heimu a.extiw:visited {
-  color: #252525;}
-.heimu, .heimu a, a .heimu, .heimu a.new {
+span.heimu a.external,
+span.heimu a.external:visited,
+span.heimu a.extiw,
+span.heimu a.extiw:visited {
+  color: #252525;
+}
+.heimu,
+.heimu a,
+a .heimu,
+.heimu a.new {
   background-color: #cccccc;
   text-shadow: none;
 }
@@ -11,6 +18,6 @@ span.heimu a.external, span.heimu a.external:visited, span.heimu a.extiw, span.h
   display: unset !important;
 }
 
-.webrender-selected-element{
+.webrender-selected-element {
   padding: 15px;
 }
