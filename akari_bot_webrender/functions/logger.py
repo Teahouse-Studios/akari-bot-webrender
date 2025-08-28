@@ -8,7 +8,7 @@ from loguru import logger
 
 def basic_logger_format():
     return (
-        f"<cyan>[WebRender]</cyan>"
+        "<cyan>[WebRender]</cyan>"
         "<yellow>[{name}:{function}:{line}]</yellow>"
         "<green>[{time:YYYY-MM-DD HH:mm:ss}]</green>"
         "<level>[{level}]:{message}</level>"
@@ -44,7 +44,7 @@ class LoggingLogger:
         if logs_path is not None:
             self.log.add(
                 sink=os.path.join(
-                    logs_path, f"webrender_debug_{{time:YYYY-MM-DD}}.log"),
+                    logs_path, "webrender_debug_{{time:YYYY-MM-DD}}.log"),
                 format=basic_logger_format(),
                 rotation="00:00",
                 retention="1 day",
@@ -55,7 +55,7 @@ class LoggingLogger:
             )
             self.log.add(
                 sink=os.path.join(
-                    logs_path, f"webrender_{{time:YYYY-MM-DD}}.log"),
+                    logs_path, "webrender_{{time:YYYY-MM-DD}}.log"),
                 format=basic_logger_format(),
                 rotation="00:00",
                 retention="10 days",

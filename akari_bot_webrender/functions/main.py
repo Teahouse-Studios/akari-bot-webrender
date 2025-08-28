@@ -43,8 +43,7 @@ def webrender_fallback(func):
         if request_remote:
             try:
                 if self.remote_webrender_url:
-                    self.logger.info(
-                        f"Trying get content from remote web render...")
+                    self.logger.info("Trying get content from remote web render...")
                     remote_url = self.remote_webrender_url + func.__name__ + "/"
                     data = options.model_dump_json(exclude_none=True)
                     self.logger.info(
@@ -62,7 +61,7 @@ def webrender_fallback(func):
                             return None
                         return json.loads(resp.read())
             except Exception:
-                self.logger.exception(f"Remote WebRender processing failed: ")
+                self.logger.exception("Remote WebRender processing failed: ")
         return None
 
     return wrapper
@@ -71,8 +70,6 @@ def webrender_fallback(func):
 class WebRender:
     browser: Browser = None
     debug: bool = False
-    custom_css = open(templates_path + "/custom.css",
-                      "r", encoding="utf-8").read()
     remote_webrender_url = None
     remote_only = False
     name = "AkariBot WebRender™"
@@ -102,15 +99,14 @@ class WebRender:
     async def select_element(el: str | list, pg: Page) -> (ElementHandle, str):
         if isinstance(el, str):
             return (await pg.query_selector(el)), el
-        else:
-            for obj in el:
-                rtn = await pg.query_selector(obj)
-                if rtn is not None:
-                    return rtn, obj
+        for obj in el:
+            rtn = await pg.query_selector(obj)
+            if rtn is not None:
+                return rtn, obj
         return None, None
 
     async def make_screenshot(self, page: Page, el: ElementHandle, screenshot_height: int = max_screenshot_height,
-                              output_type: Literal['png', 'jpeg'] = 'jpeg', output_quality: int = 90) -> list[str]:
+                              output_type: Literal["png", "jpeg"] = "jpeg", output_quality: int = 90) -> list[str]:
         await page.evaluate("window.scroll(0, 0)")
         await page.route("**/*", lambda route: route.abort())
         content_size = await el.bounding_box()
@@ -122,7 +118,7 @@ class WebRender:
             self.logger.info(
                 "Content height is less than max screenshot height, taking single screenshot.")
             img = await el.screenshot(type=output_type,
-                                      quality=output_quality if output_type == 'jpeg' else None)
+                                      quality=output_quality if output_type == "jpeg" else None)
             return [base64.b64encode(img).decode()]
 
         y_pos = content_size.get("y")
@@ -133,7 +129,7 @@ class WebRender:
                 break
             total_content_height += max_screenshot_height
             content_height = max_screenshot_height
-            if (total_content_height > content_size.get("height") + content_size.get("y")):
+            if total_content_height > content_size.get("height") + content_size.get("y"):
                 content_height = content_size.get(
                     "height") + content_size.get("y") - total_content_height + max_screenshot_height
             await page.evaluate(f"window.scroll({content_size.get("x")}, {y_pos})")
@@ -142,7 +138,7 @@ class WebRender:
                              " Width:" + str(content_size.get("width")) + " Height:" + str(content_height))
 
             img = await page.screenshot(type=output_type,
-                                        quality=output_quality if output_type == 'jpeg' else None,
+                                        quality=output_quality if output_type == "jpeg" else None,
                                         clip=FloatRect(x=content_size.get("x"),
                                                        y=y_pos,
                                                        width=content_size.get(
@@ -173,14 +169,15 @@ class WebRender:
                 }
             }""", {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name})
 
-    async def init_page(self, width=base_width, height=base_height, locale='zh_cn', content=None, url=None, css=None, stealth=True):
+    async def init_page(self, width=base_width, height=base_height, locale="zh_cn", content=None, url=None, css=None, stealth=True):
         start_time = datetime.datetime.now().timestamp()
         page = await self.browser.new_page(width=width, height=height, locale=locale, stealth=stealth)
         if content:
             await page.set_content(content, wait_until="networkidle")
         else:
             await page.goto(url, wait_until="networkidle")
-        custom_css = self.custom_css
+        with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
+            custom_css = f.read()
         await page.add_style_tag(content=custom_css)
         if css:
             await page.add_style_tag(content=css)
@@ -191,8 +188,8 @@ class WebRender:
                                             page: Page,
                                             start_time: float,
                                             count_time=True,
-                                            output_type: Literal['png',
-                                                                 'jpeg'] = 'jpeg',
+                                            output_type: Literal["png",
+                                                                 "jpeg"] = "jpeg",
                                             output_quality: int = 90):
         el, selected_ = await self.select_element(elements, page)
         if not el:
@@ -211,7 +208,7 @@ class WebRender:
             width=options.width,
             height=options.height,
             locale=options.locale,
-            content=await env.get_template("content.html").render_async(language='zh-CN', contents=options.content),
+            content=await env.get_template("content.html").render_async(language="zh-CN", contents=options.content),
             url=options.url,
             css=options.css,
             stealth=options.stealth
@@ -239,7 +236,7 @@ class WebRender:
             stealth=options.stealth
         )
         images = await self.select_element_and_screenshot(
-            elements=['body'],
+            elements=["body"],
             page=page,
             start_time=start_time,
             count_time=options.counttime,
@@ -261,7 +258,10 @@ class WebRender:
         )
 
         # :rina: :rina: :rina: :rina:
-        await page.evaluate(open(templates_path + '/element_screenshot_evaluate.js').read(), elements_to_disable)
+        with open(f"{templates_path}/element_screenshot_evaluate.js", "r", encoding="utf-8") as f:
+            js_code = f.read()
+
+        await page.evaluate(js_code, elements_to_disable)
         images = await self.select_element_and_screenshot(
             elements=options.element,
             page=page,
@@ -283,9 +283,12 @@ class WebRender:
             css=options.css,
             stealth=options.stealth
         )
-        await page.evaluate(open(templates_path + '/section_screenshot_evaluate.js').read(), {"section": options.section, "elements_to_disable": elements_to_disable})
+        with open(f"{templates_path}/section_screenshot_evaluate.js", "r", encoding="utf-8") as f:
+            js_code = f.read()
+
+        await page.evaluate(js_code, {"section": options.section, "elements_to_disable": elements_to_disable})
         images = await self.select_element_and_screenshot(
-            elements='.bot-sectionbox',
+            elements=".bot-sectionbox",
             page=page,
             start_time=start_time,
             count_time=options.counttime,
@@ -305,12 +308,11 @@ class WebRender:
             resp = await page.goto(url, wait_until="networkidle")
             if resp.status != 200:
                 get = await page.request.fetch(url)
-                if get.status != 200:
-                    self.logger.error(f"Failed to fetch URL: {
-                                      url}, status code: {get.status}")
-                    return None
-                else:
+                if get.status == 200:
                     return get.text()
+                self.logger.error(f"Failed to fetch URL: {url}, status code: {get.status}")
+                return None
+                    
 
             _source = await page.content()
             if options.raw_text:

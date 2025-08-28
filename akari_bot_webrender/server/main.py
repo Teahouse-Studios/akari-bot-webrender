@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 import orjson as json
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import ORJSONResponse
 
 from ..functions.exceptions import ElementNotFound, RequiredURL
@@ -9,11 +9,11 @@ from ..functions.main import WebRender
 from ..functions.options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, \
     SectionScreenshotOptions, SourceOptions
 
-with open('config.json', 'r') as f:
-    config = json.loads(f.read())['server']
+with open("config.json", "r") as f:
+    config = json.loads(f.read())["server"]
 
 
-webrender = WebRender(debug=config['debug'])
+webrender = WebRender(debug=config["debug"])
 
 
 @asynccontextmanager
@@ -63,11 +63,11 @@ async def section_screenshot(options: SectionScreenshotOptions):
 @app.post("/source/")
 async def source(options: SourceOptions):
     try:
-        source = await webrender.source(options)
+        source_content = await webrender.source(options)
     except RequiredURL:
         raise HTTPException(
             status_code=400, detail="URL parameter is required")
-    return ORJSONResponse(content=source)
+    return ORJSONResponse(content=source_content)
 
 
 def run():
@@ -75,7 +75,7 @@ def run():
 
     try:
         webrender.logger.info(f"Server starting on {
-                              config['host']}:{config['port']}")
+                              config["host"]}:{config["port"]}")
         uvicorn.run(app, host=config["host"], port=config["port"])
     except KeyboardInterrupt:
         webrender.logger.info("Server stopped")
