@@ -15,7 +15,7 @@ function element_screenshot_evaluate(elements_to_disable) {
     for (var i = 0; i < elements_to_disable.length; i++) {
         const element_to_boom = document.querySelector(elements_to_disable[i])// :rina: :rina: :rina: :rina:
         if (element_to_boom != null) {
-            element_to_boom.style = 'display: none'
+            element_to_boom.style = 'display: none !important'
         }
     }
     document.querySelectorAll('*').forEach(element => {
