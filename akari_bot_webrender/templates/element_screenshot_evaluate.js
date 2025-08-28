@@ -1,5 +1,4 @@
 function element_screenshot_evaluate(elements_to_disable) {
-  // skipcq
   const images = document.querySelectorAll("img");
   images.forEach((image) => {
     image.removeAttribute("loading");
@@ -8,7 +7,7 @@ function element_screenshot_evaluate(elements_to_disable) {
   const animated = document.querySelectorAll(".animated");
   for (let i = 0; i < animated.length; i++) {
     const img = animated[i].querySelectorAll("img");
-    for (let ii = 0; ii < b.length; ii++) {
+    for (let ii = 0; ii < img.length; ii++) {
       img[ii].width = img[ii].getAttribute("width") / (img.length / 2);
       img[ii].height = img[ii].getAttribute("height") / (img.length / 2);
     }
