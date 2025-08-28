@@ -43,7 +43,8 @@ def webrender_fallback(func):
         if request_remote:
             try:
                 if self.remote_webrender_url:
-                    self.logger.info("Trying get content from remote web render...")
+                    self.logger.info(
+                        "Trying get content from remote web render...")
                     remote_url = self.remote_webrender_url + func.__name__ + "/"
                     data = options.model_dump_json(exclude_none=True)
                     self.logger.info(
@@ -310,9 +311,9 @@ class WebRender:
                 get = await page.request.fetch(url)
                 if get.status == 200:
                     return get.text()
-                self.logger.error(f"Failed to fetch URL: {url}, status code: {get.status}")
+                self.logger.error(f"Failed to fetch URL: {
+                                  url}, status code: {get.status}")
                 return None
-                    
 
             _source = await page.content()
             if options.raw_text:
