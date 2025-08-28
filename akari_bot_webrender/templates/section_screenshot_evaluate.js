@@ -1,4 +1,5 @@
 function section_screenshot_evaluate({ section, elements_to_disable }) {
+  // skipcq
   console.log(`Section: ${section}`); // skipcq
   console.log(`Elements to disable: ${elements_to_disable}`); // skipcq
 

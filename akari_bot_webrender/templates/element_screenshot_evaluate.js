@@ -1,4 +1,5 @@
 function element_screenshot_evaluate(elements_to_disable) {
+  // skipcq
   const images = document.querySelectorAll("img");
   images.forEach((image) => {
     image.removeAttribute("loading");
@@ -6,10 +7,10 @@ function element_screenshot_evaluate(elements_to_disable) {
 
   const animated = document.querySelectorAll(".animated");
   for (let i = 0; i < animated.length; i++) {
-    const b = animated[i].querySelectorAll("img");
+    const img = animated[i].querySelectorAll("img");
     for (let ii = 0; ii < b.length; ii++) {
-      b[ii].width = b[ii].getAttribute("width") / (b.length / 2);
-      b[ii].height = b[ii].getAttribute("height") / (b.length / 2);
+      img[ii].width = img[ii].getAttribute("width") / (img.length / 2);
+      img[ii].height = img[ii].getAttribute("height") / (img.length / 2);
     }
     animated[i].className = "nolongeranimatebaka";
   }
