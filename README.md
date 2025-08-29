@@ -1,6 +1,6 @@
 # AkariBot WebRender
 
-此为小可的 WebRender 模块，主要用于渲染网页内容及浏览器代理请求等。
+此为[小可](https://github.com/Teahouse-Studios/akari-bot)的 WebRender 模块，主要用于渲染网页内容及浏览器代理请求等。
 
 此模块已预置在小可的项目中，若你需要使用 WebRender 有关的内容，请在项目的 `config/webrender.toml` 处将 `enable_web_render` 设置为 `true`，然后使用 `playwright install --with-deps chromium` （或 `firefox`）安装浏览器及相关依赖即可（或是在配置中手动指定 `browser_executable_path` 路径以手动选择本地的浏览器）。
 
