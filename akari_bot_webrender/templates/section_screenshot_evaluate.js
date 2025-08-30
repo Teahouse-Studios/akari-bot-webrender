@@ -46,7 +46,17 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
   const lazyimg = nbox.querySelectorAll(".lazyload");
   for (let i = 0; i < lazyimg.length; i++) {
     lazyimg[i].className = "image";
-    lazyimg[i].src = lazyimg[i].getAttribute("data-src");
+    const dataSrc = lazyimg[i].getAttribute("data-src");
+    if (
+      typeof dataSrc === "string" &&
+      (dataSrc.startsWith("http://") ||
+        dataSrc.startsWith("https://") ||
+        dataSrc.startsWith("/"))
+    ) {
+      lazyimg[i].src = dataSrc;
+    } else {
+      console.warn(`Blocked suspicious data-src value for image: ${dataSrc}`); // skipcq
+    }
   }
 
   const new_parentNode = sec.parentNode.cloneNode();
