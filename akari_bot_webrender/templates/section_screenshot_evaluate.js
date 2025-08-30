@@ -47,7 +47,6 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
   for (let i = 0; i < lazyimg.length; i++) {
     lazyimg[i].className = "image";
     const dataSrc = lazyimg[i].getAttribute("data-src");
-    // Allow only http, https or relative URLs for image src
     if (
       typeof dataSrc === "string" &&
       (dataSrc.startsWith("http://") ||
@@ -56,8 +55,7 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
     ) {
       lazyimg[i].src = dataSrc;
     } else {
-      // If not safe, skip assigning src
-      console.warn("Blocked suspicious data-src value for image:", dataSrc);
+      console.warn(`Blocked suspicious data-src value for image: ${dataSrc}`); // skipcq
     }
   }
 
