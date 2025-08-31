@@ -4,13 +4,13 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
 
   const levels = ["H1", "H2", "H3", "H4", "H5", "H6"];
   let sec = document.getElementById(section).parentNode;
-  const sec_level = sec.tagName;
+  let sec_level = sec.tagName;
   if (sec.parentNode.className.includes("ext-discussiontools-init-section")) {
     // wo yi ding yao sha le ni men
     sec = sec.parentNode;
   }
 
-  const nbox = document.createElement("div");
+  let nbox = document.createElement("div");
   nbox.className = "bot-sectionbox";
   nbox.style = "display: inline-block";
   nbox.appendChild(sec.cloneNode(true));
@@ -43,10 +43,10 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
     next_sibling = next_sibling.nextSibling;
   }
 
-  const lazyimg = nbox.querySelectorAll(".lazyload");
+  let lazyimg = nbox.querySelectorAll(".lazyload");
   for (let i = 0; i < lazyimg.length; i++) {
     lazyimg[i].className = "image";
-    const dataSrc = lazyimg[i].getAttribute("data-src");
+    let dataSrc = lazyimg[i].getAttribute("data-src");
     if (
       typeof dataSrc === "string" &&
       (dataSrc.startsWith("http://") ||
@@ -59,14 +59,14 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
     }
   }
 
-  const new_parentNode = sec.parentNode.cloneNode();
-  const pparentNode = sec.parentNode.parentNode;
+  let new_parentNode = sec.parentNode.cloneNode();
+  let pparentNode = sec.parentNode.parentNode;
   pparentNode.removeChild(sec.parentNode);
   pparentNode.appendChild(new_parentNode);
   new_parentNode.appendChild(nbox);
 
   for (let i = 0; i < elements_to_disable.length; i++) {
-    const element_to_boom = document.querySelector(elements_to_disable[i]); // :rina: :rina: :rina: :rina:
+    let element_to_boom = document.querySelector(elements_to_disable[i]); // :rina: :rina: :rina: :rina:
     if (element_to_boom != null) {
       element_to_boom.style = "display: none !important";
     }

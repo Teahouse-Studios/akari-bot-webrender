@@ -28,10 +28,12 @@ class PageScreenshotOptions(BaseOptions):
 
 class ElementScreenshotOptions(BaseOptions):
     element: str | list = None
+    elements_to_disable: list = None
 
 
 class SectionScreenshotOptions(BaseOptions):
     section: str | list = None
+    elements_to_disable: list = None
 
 
 class SourceOptions(BaseModel):
