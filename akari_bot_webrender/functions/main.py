@@ -151,7 +151,9 @@ class WebRender:
 
     @classmethod
     async def add_count_box(cls, page: Page, element: str, start_time: float = datetime.datetime.now().timestamp()):
-        return await page.evaluate(open(templates_path + '/add_count_box.js').read(), {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name})
+        with open(f"{templates_path}/add_count_box.js") as f:
+            js_code = f.read()
+        return await page.evaluate(js_code, {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name})
 
     async def init_page(self, width=base_width, height=base_height, locale="zh_cn", content=None, url=None, css=None, stealth=True):
         start_time = datetime.datetime.now().timestamp()

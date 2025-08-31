@@ -1,10 +1,10 @@
 function add_count_box({ selected_element, start_time, name }) {
-  let t = document.createElement("span");
-  t.className = "bot-countbox";
-  t.style = "position: absolute;opacity: 0.2;";
+  let cb = document.createElement("span");
+  cb.className = "bot-countbox";
+  cb.style = "position: absolute; opacity: 0.2;";
   document
     .querySelector(selected_element)
-    .insertBefore(t, document.querySelector(selected_element).firstChild);
+    .insertBefore(cb, document.querySelector(selected_element).firstChild);
   document
     .querySelector(selected_element)
     .classList.add("webrender-selected-element");
