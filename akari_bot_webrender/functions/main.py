@@ -118,13 +118,14 @@ class WebRender:
                                                     stealth=self.stealth)
             if self.content:
                 await self.page.set_content(self.content, wait_until="networkidle")
-            else:
+            if self.url:
                 await self.page.goto(self.url, wait_until="networkidle")
-            with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
-                custom_css = f.read()
-            await self.page.add_style_tag(content=custom_css)
-            if self.css:
-                await self.page.add_style_tag(content=self.css)
+            if self.content or self.url:
+                with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
+                    custom_css = f.read()
+                await self.page.add_style_tag(content=custom_css)
+                if self.css:
+                    await self.page.add_style_tag(content=self.css)
             return self
 
         async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -150,12 +151,17 @@ class WebRender:
         screenshot_height = math.floor(screenshot_height / dpr)
         self.logger.info(f"Content size: {content_size}, DPR: {
             dpr}, Screenshot height: {screenshot_height}")
+
+        # If content height is less than max screenshot height, take a single screenshot and return as a list with one item
+
         if content_size.get("height") < max_screenshot_height:
             self.logger.info(
                 "Content height is less than max screenshot height, taking single screenshot.")
             img = await el.screenshot(type=output_type,
                                       quality=output_quality if output_type == "jpeg" else None)
             return [base64.b64encode(img).decode()]
+
+        # Otherwise, take multiple screenshots and return as a list with multiple items
 
         y_pos = content_size.get("y")
         total_content_height = content_size.get("y")
@@ -301,27 +307,26 @@ class WebRender:
 
     @webrender_fallback
     async def source(self, options: SourceOptions):
-        page = await self.browser.new_page(locale=options.locale, stealth=options.stealth)
-        try:
-            url = options.url
-            if not url:
-                raise RequiredURL
+        url = options.url
+        if not url:
+            raise RequiredURL
+        async with self.RenderPage(self,
+                                   locale=options.locale,
+                                   url=options.url,
+                                   stealth=options.stealth) as p:
 
-            resp = await page.goto(url, wait_until="networkidle")
-            if resp.status != 200:
-                get = await page.request.fetch(url)
+            resp = await p.page.goto(url, wait_until="networkidle")
+            if resp.status != 200:  # attempt to fetch the url content using fetch
+                get = await p.page.request.fetch(url)
                 if get.status == 200:
                     return get.text()
                 self.logger.error(f"Failed to fetch URL: {
                     url}, status code: {get.status}")
                 return None
 
-            _source = await page.content()
+            _source = await p.page.content()
             if options.raw_text:
-                _source = await page.query_selector("pre")
+                _source = await p.page.query_selector("pre")
                 return await _source.inner_text()
 
             return _source
-        finally:
-            if not self.debug:
-                await page.close()
