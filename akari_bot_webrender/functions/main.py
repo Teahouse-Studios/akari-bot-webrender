@@ -2,12 +2,12 @@ import asyncio
 import base64
 import datetime
 import math
+from typing import Literal
 from typing import Optional
 
 import httpx
 import orjson as json
 from jinja2 import Environment, FileSystemLoader
-from typing import Literal
 from playwright.async_api import Page, ElementHandle, FloatRect
 
 from .browser import Browser
@@ -96,6 +96,41 @@ class WebRender:
             self.browser_close = self.browser.close
             self.logger = self.browser.logger
 
+    class RenderPage:
+
+        def __init__(self, parent: 'WebRender', width=base_width, height=base_height, locale="zh_cn", content=None,
+                     url=None, css=None, stealth=True):
+            self.width = width
+            self.height = height
+            self.locale = locale
+            self.content = content
+            self.url = url
+            self.css = css
+            self.stealth = stealth
+            self.browser = parent.browser
+            self.debug = parent.debug
+
+        async def __aenter__(self):
+            self.start_time = datetime.datetime.now().timestamp()
+            self.page = await self.browser.new_page(width=self.width,
+                                                    height=self.height,
+                                                    locale=self.locale,
+                                                    stealth=self.stealth)
+            if self.content:
+                await self.page.set_content(self.content, wait_until="networkidle")
+            else:
+                await self.page.goto(self.url, wait_until="networkidle")
+            with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
+                custom_css = f.read()
+            await self.page.add_style_tag(content=custom_css)
+            if self.css:
+                await self.page.add_style_tag(content=self.css)
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            if not self.debug:
+                await self.page.close()
+
     @staticmethod
     async def select_element(el: str | list, pg: Page) -> (ElementHandle, str):
         if isinstance(el, str):
@@ -114,7 +149,7 @@ class WebRender:
         dpr = page.viewport_size.get("deviceScaleFactor", 1)
         screenshot_height = math.floor(screenshot_height / dpr)
         self.logger.info(f"Content size: {content_size}, DPR: {
-                         dpr}, Screenshot height: {screenshot_height}")
+            dpr}, Screenshot height: {screenshot_height}")
         if content_size.get("height") < max_screenshot_height:
             self.logger.info(
                 "Content height is less than max screenshot height, taking single screenshot.")
@@ -153,21 +188,8 @@ class WebRender:
     async def add_count_box(cls, page: Page, element: str, start_time: float = datetime.datetime.now().timestamp()):
         with open(f"{templates_path}/add_count_box.js") as f:
             js_code = f.read()
-        return await page.evaluate(js_code, {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name})
-
-    async def init_page(self, width=base_width, height=base_height, locale="zh_cn", content=None, url=None, css=None, stealth=True):
-        start_time = datetime.datetime.now().timestamp()
-        page = await self.browser.new_page(width=width, height=height, locale=locale, stealth=stealth)
-        if content:
-            await page.set_content(content, wait_until="networkidle")
-        else:
-            await page.goto(url, wait_until="networkidle")
-        with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
-            custom_css = f.read()
-        await page.add_style_tag(content=custom_css)
-        if css:
-            await page.add_style_tag(content=css)
-        return page, start_time
+        return await page.evaluate(js_code, {"selected_element": element, "start_time": int(start_time * 1000),
+                                             "name": cls.name})
 
     async def select_element_and_screenshot(self,
                                             elements: str | list,
@@ -184,103 +206,98 @@ class WebRender:
             await self.add_count_box(page, selected_, start_time)
         images = await self.make_screenshot(page, el, output_type=output_type,
                                             output_quality=output_quality)
-        if not self.debug:
-            await page.close()
         return images
 
     @webrender_fallback
     async def legacy_screenshot(self, options: LegacyScreenshotOptions):
-        page, start_time = await self.init_page(
-            width=options.width,
-            height=options.height,
-            locale=options.locale,
-            content=await env.get_template("content.html").render_async(language="zh-CN", contents=options.content),
-            url=options.url,
-            css=options.css,
-            stealth=options.stealth
-        )
-        images = await self.select_element_and_screenshot(
-            elements=["body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)" if options.mw
-                      else "body > *:not(script):not(style):not(link):not(meta)"],
-            page=page,
-            start_time=start_time,
-            count_time=options.counttime,
-            output_type=options.output_type,
-            output_quality=options.output_quality
-        )
-        return images
+        async with self.RenderPage(self,
+                                   width=options.width,
+                                   height=options.height,
+                                   locale=options.locale,
+                                   content=await env.get_template("content.html").render_async(language="zh-CN",
+                                                                                               contents=options.content),
+                                   url=options.url,
+                                   css=options.css,
+                                   stealth=options.stealth) as p:
+            images = await self.select_element_and_screenshot(
+                elements=["body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)" if options.mw
+                          else "body > *:not(script):not(style):not(link):not(meta)"],
+                page=p.page,
+                start_time=p.start_time,
+                count_time=options.counttime,
+                output_type=options.output_type,
+                output_quality=options.output_quality
+            )
+            return images
 
     @webrender_fallback
     async def page_screenshot(self, options: PageScreenshotOptions):
-        page, start_time = await self.init_page(
-            width=options.width,
-            height=options.height,
-            locale=options.locale,
-            content=options.content,
-            url=options.url,
-            css=options.css,
-            stealth=options.stealth
-        )
-        images = await self.select_element_and_screenshot(
-            elements=["body"],
-            page=page,
-            start_time=start_time,
-            count_time=options.counttime,
-            output_type=options.output_type,
-            output_quality=options.output_quality
-        )
-        return images
+
+        async with self.RenderPage(self,
+                                   width=options.width,
+                                   height=options.height,
+                                   locale=options.locale,
+                                   content=options.content,
+                                   url=options.url,
+                                   css=options.css,
+                                   stealth=options.stealth) as p:
+            images = await self.select_element_and_screenshot(
+                elements=["body"],
+                page=p.page,
+                start_time=p.start_time,
+                count_time=options.counttime,
+                output_type=options.output_type,
+                output_quality=options.output_quality
+            )
+            return images
 
     @webrender_fallback
     async def element_screenshot(self, options: ElementScreenshotOptions):
-        page, start_time = await self.init_page(
-            width=options.width,
-            height=options.height,
-            locale=options.locale,
-            content=options.content,
-            url=options.url,
-            css=options.css,
-            stealth=options.stealth
-        )
-        # :rina: :rina: :rina: :rina:
-        with open(f"{templates_path}/element_screenshot_evaluate.js", "r", encoding="utf-8") as f:
-            js_code = f.read()
+        async with self.RenderPage(self,
+                                   width=options.width,
+                                   height=options.height,
+                                   locale=options.locale,
+                                   content=options.content,
+                                   url=options.url,
+                                   css=options.css,
+                                   stealth=options.stealth) as p:
+            with open(f"{templates_path}/element_screenshot_evaluate.js", "r", encoding="utf-8") as f:
+                js_code = f.read()
 
-        await page.evaluate(js_code, elements_to_disable)
-        images = await self.select_element_and_screenshot(
-            elements=options.element,
-            page=page,
-            start_time=start_time,
-            count_time=options.counttime,
-            output_type=options.output_type,
-            output_quality=options.output_quality
-        )
-        return images
+            await p.page.evaluate(js_code, elements_to_disable)
+            images = await self.select_element_and_screenshot(
+                elements=options.element,
+                page=p.page,
+                start_time=p.start_time,
+                count_time=options.counttime,
+                output_type=options.output_type,
+                output_quality=options.output_quality
+            )
+            return images
 
     @webrender_fallback
     async def section_screenshot(self, options: SectionScreenshotOptions):
-        page, start_time = await self.init_page(
-            width=options.width,
-            height=options.height,
-            locale=options.locale,
-            content=options.content,
-            url=options.url,
-            css=options.css,
-            stealth=options.stealth
-        )
-        with open(f"{templates_path}/section_screenshot_evaluate.js", "r", encoding="utf-8") as f:
-            js_code = f.read()
+        async with self.RenderPage(self,
+                                   width=options.width,
+                                   height=options.height,
+                                   locale=options.locale,
+                                   content=options.content,
+                                   url=options.url,
+                                   css=options.css,
+                                   stealth=options.stealth) as p:
+            with open(f"{templates_path}/section_screenshot_evaluate.js", "r", encoding="utf-8") as f:
+                js_code = f.read()
 
-        await page.evaluate(js_code, {"section": options.section, "elements_to_disable": elements_to_disable})
-        images = await self.select_element_and_screenshot(
-            elements=".bot-sectionbox",
-            page=page,
-            start_time=start_time,
-            count_time=options.counttime,
-            output_type=options.output_type,
-            output_quality=options.output_quality
-        )
-        return images
+            await p.page.evaluate(js_code, {"section": options.section, "elements_to_disable": elements_to_disable})
+            images = await self.select_element_and_screenshot(
+                elements=".bot-sectionbox",
+                page=p.page,
+                start_time=p.start_time,
+                count_time=options.counttime,
+                output_type=options.output_type,
+                output_quality=options.output_quality
+            )
+            return images
 
     @webrender_fallback
     async def source(self, options: SourceOptions):
@@ -296,7 +313,7 @@ class WebRender:
                 if get.status == 200:
                     return get.text()
                 self.logger.error(f"Failed to fetch URL: {
-                                  url}, status code: {get.status}")
+                    url}, status code: {get.status}")
                 return None
 
             _source = await page.content()
