@@ -1,6 +1,6 @@
-import os
 import sys
 import traceback
+from pathlib import Path
 from typing import Optional
 
 from loguru import logger
@@ -16,12 +16,13 @@ def basic_logger_format():
 
 
 class LoggingLogger:
-    def __init__(self, debug: bool = False, logs_path: str = None):
+    def __init__(self, debug: bool = False, logs_path: str | Path = None):
         try:
             logger.remove(0)
         except ValueError:
             # 如果没有默认的日志处理器，则忽略此错误
             pass
+
         self.log = logger.bind(name="WebRender")
         self.trace = self.log.trace
         self.debug = self.log.debug
@@ -41,10 +42,9 @@ class LoggingLogger:
             filter=lambda record: record["extra"].get("name") == "WebRender",
         )
 
-        if logs_path is not None:
+        if logs_path:
             self.log.add(
-                sink=os.path.join(
-                    logs_path, "webrender_debug_{{time:YYYY-MM-DD}}.log"),
+                sink=Path(self.log_path) / "webrender_debug_{time:YYYY-MM-DD}.log",
                 format=basic_logger_format(),
                 rotation="00:00",
                 retention="1 day",
@@ -54,8 +54,7 @@ class LoggingLogger:
                 encoding="utf8",
             )
             self.log.add(
-                sink=os.path.join(
-                    logs_path, "webrender_{{time:YYYY-MM-DD}}.log"),
+                sink=Path(self.log_path) / "webrender_{time:YYYY-MM-DD}.log",
                 format=basic_logger_format(),
                 rotation="00:00",
                 retention="10 days",
@@ -65,7 +64,7 @@ class LoggingLogger:
                     "name") == "WebRender",
             )
         if debug:
-            self.log.warning("Debug mode is enabled.")
+            self.log.debug("Debug mode is enabled.")
 
     def exception(self, message: Optional[str] = None):
         if message:

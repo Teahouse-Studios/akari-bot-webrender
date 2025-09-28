@@ -2,8 +2,8 @@ import asyncio
 import base64
 import datetime
 import math
-from typing import Literal
-from typing import Optional
+from pathlib import Path
+from typing import Literal, Optional
 
 import httpx
 import orjson as json
@@ -73,6 +73,7 @@ class WebRender:
     debug: bool = False
     remote_webrender_url = None
     remote_only = False
+    export_logs = False
     name = "AkariBot WebRender™"
 
     def __init__(self, debug: bool = False,
@@ -91,7 +92,7 @@ class WebRender:
             self.name = name
 
         if not self.browser:
-            self.browser = Browser(debug=debug)
+            self.browser = Browser(debug=debug, logs_path=(Path(__file__).parent.parent / "logs").resolve())
             self.browser_init = self.browser.browser_init
             self.browser_close = self.browser.close
             self.logger = self.browser.logger
@@ -202,8 +203,7 @@ class WebRender:
                                             page: Page,
                                             start_time: float,
                                             count_time=True,
-                                            output_type: Literal["png",
-                                                                 "jpeg"] = "jpeg",
+                                            output_type: Literal["png", "jpeg"] = "jpeg",
                                             output_quality: int = 90):
         el, selected_ = await self.select_element(elements, page)
         if not el:

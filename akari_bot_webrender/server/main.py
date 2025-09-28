@@ -19,7 +19,8 @@ webrender = WebRender(debug=config["debug"])
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        await webrender.browser_init(browse_type=config["browser_type"], executable_path=config["executable_path"] if config["executable_path"] else None)
+        await webrender.browser_init(browse_type=config["browser_type"],
+                                     executable_path=config["executable_path"] if config["executable_path"] else None)
         yield
     finally:
         await webrender.browser_close()

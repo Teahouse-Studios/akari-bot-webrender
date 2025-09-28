@@ -3,6 +3,7 @@
     "host": "127.0.0.1",
     "port": 15551,
     "debug": false,
+    "export_logs": false,
     "browser_type": "chromium",
     "executable_path": ""
   }

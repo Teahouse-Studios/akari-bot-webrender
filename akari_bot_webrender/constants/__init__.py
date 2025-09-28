@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 elements_to_disable = [".notifications-placeholder",
                        ".top-ads-container",
@@ -19,8 +19,7 @@ elements_to_disable = [".notifications-placeholder",
                        ]
 
 
-templates_path = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "../templates"))
+templates_path = (Path(__file__).parent.parent / "templates").resolve()
 
 base_user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36"
 

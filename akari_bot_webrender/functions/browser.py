@@ -15,12 +15,16 @@ class Browser:
     browser: BrowserProcess = None
     contexts: dict[str, BrowserContext] = {}
     debug: bool = False
+    export_logs: bool = False
+    logs_path = None
     logger: LoggingLogger
     user_agent = base_user_agent
 
-    def __init__(self, debug: bool = False, log_path: str = None):
+    def __init__(self, debug: bool = False, export_logs: bool = False, logs_path: str | Path = None):
         self.debug = debug
-        self.logger = LoggingLogger(debug=debug, logs_path=log_path)
+        if export_logs:
+            self.logs_path = logs_path
+        self.logger = LoggingLogger(debug=debug, logs_path=logs_path)
 
     async def browser_init(self, browse_type: Literal["chrome", "chromium", "firefox"] = "chromium",
                            width: int = base_width,
