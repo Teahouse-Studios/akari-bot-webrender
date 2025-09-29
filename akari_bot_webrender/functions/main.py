@@ -81,8 +81,8 @@ class WebRender:
                  debug: bool = False,
                  remote_webrender_url: Optional[str] = None,
                  remote_only: bool = False,
-                 export_logs = False
-                 logs_path = None
+                 export_logs = False,
+                 logs_path = None,
                  name: str = None):
         """
         :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
@@ -97,7 +97,7 @@ class WebRender:
             if logs_path:
                 self.logs_path = Path(logs_path)
             else:
-                self.logs_path = (Path(__file__).parent.parent / "logs").resolve()
+                self.logs_path = (Path(__file__).parent.parent.parent / "logs").resolve()
         if name:
             self.name = name
 
