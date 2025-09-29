@@ -24,7 +24,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.12"
 uvicorn = "^0.37.0"
-fastapi = "^0.117.0"
+fastapi = "^0.118.0"
 pydantic = "^2.11.7"
 playwright = "^1.52.0"
 orjson = "^3.10.18"
