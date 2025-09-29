@@ -74,11 +74,15 @@ class WebRender:
     remote_webrender_url = None
     remote_only = False
     export_logs = False
+    logs_path = None
     name = "AkariBot WebRender™"
 
-    def __init__(self, debug: bool = False,
+    def __init__(self,
+                 debug: bool = False,
                  remote_webrender_url: Optional[str] = None,
                  remote_only: bool = False,
+                 export_logs = False
+                 logs_path = None
                  name: str = None):
         """
         :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
@@ -88,11 +92,17 @@ class WebRender:
         if self.remote_webrender_url and self.remote_webrender_url[-1] != "/":
             self.remote_webrender_url += "/"
         self.remote_only = remote_only
+        self.export_logs = export_logs
+        if export_logs: 
+            if logs_path:
+                self.logs_path = Path(logs_path)
+            else:
+                self.logs_path = (Path(__file__).parent.parent / "logs").resolve()
         if name:
             self.name = name
 
         if not self.browser:
-            self.browser = Browser(debug=debug, logs_path=(Path(__file__).parent.parent / "logs").resolve())
+            self.browser = Browser(debug=debug, logs_path=self.logs_path)
             self.browser_init = self.browser.browser_init
             self.browser_close = self.browser.close
             self.logger = self.browser.logger
