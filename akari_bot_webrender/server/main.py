@@ -13,14 +13,16 @@ with open("config.json", "r") as f:
     config = json.loads(f.read())["server"]
 
 
-webrender = WebRender(debug=config["debug"])
+webrender = WebRender(debug=config.get("debug", False),
+                      export_logs=config.get("export_logs", False)
+                     )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        await webrender.browser_init(browse_type=config["browser_type"],
-                                     executable_path=config["executable_path"] if config["executable_path"] else None)
+        await webrender.browser_init(browse_type=config.get("browser_type", "chromium"),
+                                     executable_path=config.get("executable_path"))
         yield
     finally:
         await webrender.browser_close()
