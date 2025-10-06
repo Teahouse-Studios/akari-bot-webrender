@@ -1,0 +1,9 @@
+.git
+.github
+.vscode
+.deepsource.toml
+.editorconfig
+.gitignore
+.pre-commit-config.yaml
+pyproject.toml
+renovate.json
