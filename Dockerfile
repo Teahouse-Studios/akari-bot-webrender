@@ -35,7 +35,6 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --no-cache-dir playwright \
-    && playwright install --with-deps
+RUN npx playwright install
 
 CMD ["python", "./run_server.py"]
