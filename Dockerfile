@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright/python:1.42.0-focal
+FROM mcr.microsoft.com/playwright/python:1.48.0-focal
 
 LABEL org.opencontainers.image.url=https://github.com/Teahouse-Studios/akari-bot-webrender
 LABEL org.opencontainers.image.documentation=https://bot.teahouse.team/
