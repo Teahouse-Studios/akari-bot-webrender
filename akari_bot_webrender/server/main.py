@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import orjson as json
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import FileResponse, ORJSONResponse
 
 from ..functions.exceptions import ElementNotFound, RequiredURL
 from ..functions.main import WebRender
@@ -71,6 +72,11 @@ async def source(options: SourceOptions):
         raise HTTPException(
             status_code=400, detail="URL parameter is required")
     return ORJSONResponse(content=source_content)
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    return FileResponse((Path(__file__).parent / "favicon.ico").resolve())
 
 
 def run():
