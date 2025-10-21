@@ -13,7 +13,7 @@ from playwright.async_api import Page, ElementHandle, FloatRect
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
 from .options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, SectionScreenshotOptions, \
-    SourceOptions
+    SourceOptions, StatusOptions
 from ..constants import templates_path, elements_to_disable, max_screenshot_height, base_width, base_height
 
 env = Environment(loader=FileSystemLoader(templates_path),
@@ -344,7 +344,7 @@ class WebRender:
             return _source
 
     @webrender_fallback
-    async def status(self):
+    async def status(self, options: StatusOptions = None):
         pages_open = 0
         for context in self.browser.browser.contexts:
             pages_open += len(context.pages)

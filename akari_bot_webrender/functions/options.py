@@ -41,3 +41,7 @@ class SourceOptions(BaseModel):
     raw_text: bool = False
     locale: str = "zh_cn"
     stealth: bool = True
+
+
+class StatusOptions(BaseModel):
+    pass
