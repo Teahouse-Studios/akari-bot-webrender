@@ -81,8 +81,8 @@ class WebRender:
                  debug: bool = False,
                  remote_webrender_url: Optional[str] = None,
                  remote_only: bool = False,
-                 export_logs = False,
-                 logs_path = None,
+                 export_logs=False,
+                 logs_path=None,
                  name: str = None):
         """
         :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
@@ -93,11 +93,12 @@ class WebRender:
             self.remote_webrender_url += "/"
         self.remote_only = remote_only
         self.export_logs = export_logs
-        if export_logs: 
+        if export_logs:
             if logs_path:
                 self.logs_path = Path(logs_path)
             else:
-                self.logs_path = (Path(__file__).parent.parent.parent / "logs").resolve()
+                self.logs_path = (
+                    Path(__file__).parent.parent.parent / "logs").resolve()
         if name:
             self.name = name
 
@@ -213,7 +214,8 @@ class WebRender:
                                             page: Page,
                                             start_time: float,
                                             count_time=True,
-                                            output_type: Literal["png", "jpeg"] = "jpeg",
+                                            output_type: Literal["png",
+                                                                 "jpeg"] = "jpeg",
                                             output_quality: int = 90):
         el, selected_ = await self.select_element(elements, page)
         if not el:
@@ -340,3 +342,18 @@ class WebRender:
                 return await _source.inner_text()
 
             return _source
+
+    @webrender_fallback
+    async def status(self):
+        pages_open = 0
+        for context in self.browser.browser.contexts:
+            pages_open += len(context.pages)
+        return {
+            "browser_initialized": self.browser.browser is not None,
+            "debug_mode": self.debug,
+            "remote_only": self.remote_only,
+            "export_logs": self.export_logs,
+            "logs_path": str(self.logs_path) if self.logs_path else None,
+            "name": self.name,
+            "pages_open": pages_open,
+        }

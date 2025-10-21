@@ -16,7 +16,7 @@ with open("config.json", "r") as f:
 
 webrender = WebRender(debug=config.get("debug", False),
                       export_logs=config.get("export_logs", False)
-                     )
+                      )
 
 
 @asynccontextmanager
@@ -72,6 +72,11 @@ async def source(options: SourceOptions):
         raise HTTPException(
             status_code=400, detail="URL parameter is required")
     return ORJSONResponse(content=source_content)
+
+
+@app.get("/status/")
+async def status():
+    return ORJSONResponse(content=await webrender.status())
 
 
 @app.get("/favicon.ico")
