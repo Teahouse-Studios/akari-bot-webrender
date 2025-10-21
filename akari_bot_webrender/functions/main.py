@@ -2,8 +2,9 @@ import asyncio
 import base64
 import datetime
 import math
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import httpx
 import orjson as json
@@ -108,44 +109,33 @@ class WebRender:
             self.browser_close = self.browser.close
             self.logger = self.browser.logger
 
-    class RenderPage:
-
-        def __init__(self, parent: 'WebRender', width=base_width, height=base_height, locale="zh_cn", content=None,
-                     url=None, css=None, stealth=True):
-            self.width = width
-            self.height = height
-            self.locale = locale
-            self.content = content
-            self.url = url
-            self.css = css
-            self.stealth = stealth
-            self.browser = parent.browser
-            self.debug = parent.debug
-
-        async def __aenter__(self):
-            self.start_time = datetime.datetime.now().timestamp()
-            self.page = await self.browser.new_page(width=self.width,
-                                                    height=self.height,
-                                                    locale=self.locale,
-                                                    stealth=self.stealth)
-            if self.content:
-                await self.page.set_content(self.content, wait_until="networkidle")
-            if self.url:
-                await self.page.goto(self.url, wait_until="networkidle")
-            if self.content or self.url:
+    @asynccontextmanager
+    async def render_page(self, width=base_width, height=base_height, locale="zh_cn", content=None,
+                          url=None, css=None, stealth=True):
+        page = None
+        try:
+            start_time = datetime.datetime.now().timestamp()
+            page = await self.browser.new_page(width=width,
+                                               height=height,
+                                               locale=locale,
+                                               stealth=stealth)
+            if content:
+                await page.set_content(content, wait_until="networkidle")
+            if url:
+                await page.goto(url, wait_until="networkidle")
+            if content or url:
                 with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
                     custom_css = f.read()
-                await self.page.add_style_tag(content=custom_css)
-                if self.css:
-                    await self.page.add_style_tag(content=self.css)
-            return self
-
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            if not self.debug:
-                await self.page.close()
+                await page.add_style_tag(content=custom_css)
+                if css:
+                    await page.add_style_tag(content=css)
+            yield page, start_time
+        finally:
+            if not self.debug and page:
+                await page.close()
 
     @staticmethod
-    async def select_element(el: str | list, pg: Page) -> (ElementHandle, str):
+    async def select_element(el: str | list, pg: Page) -> Tuple[Optional[ElementHandle], Optional[str]]:
         if isinstance(el, str):
             return (await pg.query_selector(el)), el
         for obj in el:
@@ -228,20 +218,19 @@ class WebRender:
 
     @webrender_fallback
     async def legacy_screenshot(self, options: LegacyScreenshotOptions):
-        async with self.RenderPage(self,
-                                   width=options.width,
-                                   height=options.height,
-                                   locale=options.locale,
-                                   content=await env.get_template("content.html").render_async(language="zh-CN",
-                                                                                               contents=options.content),
-                                   url=options.url,
-                                   css=options.css,
-                                   stealth=options.stealth) as p:
+        async with self.render_page(width=options.width,
+                                    height=options.height,
+                                    locale=options.locale,
+                                    content=await env.get_template("content.html").render_async(language="zh-CN",
+                                                                                                contents=options.content),
+                                    url=options.url,
+                                    css=options.css,
+                                    stealth=options.stealth) as (page, start_time):
             images = await self.select_element_and_screenshot(
                 elements=["body > .mw-parser-output > *:not(script):not(style):not(link):not(meta)" if options.mw
                           else "body > *:not(script):not(style):not(link):not(meta)"],
-                page=p.page,
-                start_time=p.start_time,
+                page=page,
+                start_time=start_time,
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality
@@ -251,18 +240,18 @@ class WebRender:
     @webrender_fallback
     async def page_screenshot(self, options: PageScreenshotOptions):
 
-        async with self.RenderPage(self,
-                                   width=options.width,
-                                   height=options.height,
-                                   locale=options.locale,
-                                   content=options.content,
-                                   url=options.url,
-                                   css=options.css,
-                                   stealth=options.stealth) as p:
+        async with self.render_page(
+                width=options.width,
+                height=options.height,
+                locale=options.locale,
+                content=options.content,
+                url=options.url,
+                css=options.css,
+                stealth=options.stealth) as (page, start_time):
             images = await self.select_element_and_screenshot(
                 elements=["body"],
-                page=p.page,
-                start_time=p.start_time,
+                page=page,
+                start_time=start_time,
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality
@@ -271,22 +260,22 @@ class WebRender:
 
     @webrender_fallback
     async def element_screenshot(self, options: ElementScreenshotOptions):
-        async with self.RenderPage(self,
-                                   width=options.width,
-                                   height=options.height,
-                                   locale=options.locale,
-                                   content=options.content,
-                                   url=options.url,
-                                   css=options.css,
-                                   stealth=options.stealth) as p:
+        async with self.render_page(
+                width=options.width,
+                height=options.height,
+                locale=options.locale,
+                content=options.content,
+                url=options.url,
+                css=options.css,
+                stealth=options.stealth) as (page, start_time):
             with open(f"{templates_path}/element_screenshot_evaluate.js", "r", encoding="utf-8") as f:
                 js_code = f.read()
 
-            await p.page.evaluate(js_code, elements_to_disable)
+            await page.evaluate(js_code, elements_to_disable)
             images = await self.select_element_and_screenshot(
                 elements=options.element,
-                page=p.page,
-                start_time=p.start_time,
+                page=page,
+                start_time=start_time,
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality
@@ -295,22 +284,22 @@ class WebRender:
 
     @webrender_fallback
     async def section_screenshot(self, options: SectionScreenshotOptions):
-        async with self.RenderPage(self,
-                                   width=options.width,
-                                   height=options.height,
-                                   locale=options.locale,
-                                   content=options.content,
-                                   url=options.url,
-                                   css=options.css,
-                                   stealth=options.stealth) as p:
+        async with self.render_page(
+                width=options.width,
+                height=options.height,
+                locale=options.locale,
+                content=options.content,
+                url=options.url,
+                css=options.css,
+                stealth=options.stealth) as (page, start_time):
             with open(f"{templates_path}/section_screenshot_evaluate.js", "r", encoding="utf-8") as f:
                 js_code = f.read()
 
-            await p.page.evaluate(js_code, {"section": options.section, "elements_to_disable": elements_to_disable})
+            await page.evaluate(js_code, {"section": options.section, "elements_to_disable": elements_to_disable})
             images = await self.select_element_and_screenshot(
                 elements=".bot-sectionbox",
-                page=p.page,
-                start_time=p.start_time,
+                page=page,
+                start_time=start_time,
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality
@@ -322,23 +311,23 @@ class WebRender:
         url = options.url
         if not url:
             raise RequiredURL
-        async with self.RenderPage(self,
-                                   locale=options.locale,
-                                   url=options.url,
-                                   stealth=options.stealth) as p:
+        async with self.render_page(
+                locale=options.locale,
+                url=options.url,
+                stealth=options.stealth) as (page, start_time):
 
-            resp = await p.page.goto(url, wait_until="networkidle")
+            resp = await page.goto(url, wait_until="networkidle")
             if resp.status != 200:  # attempt to fetch the url content using fetch
-                get = await p.page.request.fetch(url)
+                get = await page.request.fetch(url)
                 if get.status == 200:
                     return get.text()
                 self.logger.error(f"Failed to fetch URL: {
                     url}, status code: {get.status}")
                 return None
 
-            _source = await p.page.content()
+            _source = await page.content()
             if options.raw_text:
-                _source = await p.page.query_selector("pre")
+                _source = await page.query_selector("pre")
                 return await _source.inner_text()
 
             return _source
