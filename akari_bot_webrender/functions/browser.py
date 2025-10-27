@@ -76,7 +76,7 @@ class Browser:
         return True
 
     async def new_page(self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True):
-        if f"{width}x{height}" not in self.contexts:
+        if f"{width}x{height}_{locale}" not in self.contexts:
             self.contexts[f"{width}x{height}_{locale}"] = await self.browser.new_context(user_agent=self.user_agent,
                                                                                          viewport=ViewportSize(
                                                                                              width=width, height=height),
