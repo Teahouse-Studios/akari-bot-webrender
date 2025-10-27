@@ -1,4 +1,6 @@
 name: "Docker Build and Publish"
+permissions:
+  contents: read
 
 on:
   release:
