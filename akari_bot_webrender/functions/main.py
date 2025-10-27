@@ -334,10 +334,11 @@ class WebRender:
 
     @webrender_fallback
     async def status(self, options: StatusOptions = None):
-        pages_open = []
+        contexts_open = {}
         for context in self.browser.browser.contexts:
+            contexts_open[context] = []
             for page in context.pages:
-                pages_open.append(page.url)
+                contexts_open[context].append(page.url)
         return {
             "browser_initialized": self.browser.browser is not None,
             "debug_mode": self.debug,
@@ -345,5 +346,5 @@ class WebRender:
             "export_logs": self.export_logs,
             "logs_path": str(self.logs_path) if self.logs_path else None,
             "name": self.name,
-            "pages_open": pages_open,
+            "contexts_open": contexts_open,
         }
