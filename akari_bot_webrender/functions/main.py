@@ -335,9 +335,9 @@ class WebRender:
     @webrender_fallback
     async def status(self, options: StatusOptions = None):
         contexts_open = {}
-        for context in self.browser.browser.contexts:
+        for context in self.browser.contexts:
             contexts_open[context] = []
-            for page in context.pages:
+            for page in self.browser.contexts[context].pages:
                 contexts_open[context].append(page.url)
         return {
             "browser_initialized": self.browser.browser is not None,
