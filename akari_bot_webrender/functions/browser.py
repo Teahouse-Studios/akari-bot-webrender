@@ -36,7 +36,7 @@ class Browser:
             self.logger.info("Launching browser...")
             try:
                 _p = async_api.async_playwright()
-                self.playwright = _p.start()
+                self.playwright = await _p.start()
                 _b = None
                 if browse_type in ["chrome", "chromium"]:
                     _b = self.playwright.chromium
