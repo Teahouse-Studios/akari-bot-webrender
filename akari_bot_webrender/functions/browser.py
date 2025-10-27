@@ -35,7 +35,8 @@ class Browser:
         if not self.playwright and not self.browser:
             self.logger.info("Launching browser...")
             try:
-                self.playwright = await async_api.async_playwright().start()
+                _p = async_api.async_playwright()
+                self.playwright = _p.start()
                 _b = None
                 if browse_type in ["chrome", "chromium"]:
                     _b = self.playwright.chromium
@@ -65,10 +66,14 @@ class Browser:
         for context in self.contexts.values():
             await context.close()
         self.contexts = {}
-        await self.browser.close()
-        await self.playwright.stop()
+        if self.browser:
+            await self.browser.close()
+        if self.playwright:
+            await self.playwright.stop()
         self.browser = None
         self.playwright = None
+        self.logger.info("Browser closed.")
+        return True
 
     async def new_page(self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True):
         if f"{width}x{height}" not in self.contexts:
@@ -80,3 +85,8 @@ class Browser:
         if stealth:
             await stealth_async(page)
         return page
+
+    async def check_status(self):
+        if self.playwright and self.browser:
+            return True
+        return False
