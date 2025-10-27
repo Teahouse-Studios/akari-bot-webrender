@@ -62,10 +62,13 @@ class Browser:
             return True
 
     async def close(self):
+        for context in self.contexts.values():
+            await context.close()
+        self.contexts = {}
         await self.browser.close()
         await self.playwright.stop()
-        self.playwright = None
         self.browser = None
+        self.playwright = None
 
     async def new_page(self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True):
         if f"{width}x{height}" not in self.contexts:
