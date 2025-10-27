@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 from playwright import async_api
 from playwright.async_api import Playwright, Browser as BrowserProcess, BrowserContext, ViewportSize
@@ -11,8 +11,8 @@ from .logger import LoggingLogger
 
 
 class Browser:
-    playwright: Playwright = None
-    browser: BrowserProcess = None
+    playwright: Optional[Playwright] = None
+    browser: Optional[BrowserProcess] = None
     contexts: dict[str, BrowserContext] = {}
     debug: bool = False
     export_logs: bool = False
@@ -63,6 +63,9 @@ class Browser:
 
     async def close(self):
         await self.browser.close()
+        await self.playwright.stop()
+        self.playwright = None
+        self.browser = None
 
     async def new_page(self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True):
         if f"{width}x{height}" not in self.contexts:
