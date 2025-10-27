@@ -339,6 +339,9 @@ class WebRender:
             contexts_open[context] = []
             for page in self.browser.contexts[context].pages:
                 contexts_open[context].append(page.url)
+
+        contexts_total = len(self.browser.browser.contexts)
+
         return {
             "browser_initialized": self.browser.browser is not None,
             "debug_mode": self.debug,
@@ -346,5 +349,7 @@ class WebRender:
             "export_logs": self.export_logs,
             "logs_path": str(self.logs_path) if self.logs_path else None,
             "name": self.name,
-            "contexts_open": contexts_open,
+            "contexts_open_sorted": contexts_open,
+            "contexts_total": contexts_total,
+            "leaked": len(contexts_open) != contexts_total,
         }
