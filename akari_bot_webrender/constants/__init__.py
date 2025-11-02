@@ -21,7 +21,7 @@ elements_to_disable = [".notifications-placeholder",
 
 templates_path = (Path(__file__).parent.parent / "templates").resolve()
 
-base_user_agent = "AkariBotWebrender/1.0 (+https://github.com/Teahouse-Studios/akari-bot-webrender) Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36"
+base_user_agent = "AkariBotWebrender/1.0 (+https://github.com/Teahouse-Studios/akari-bot-webrender) Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
 
 base_width = 720
 base_height = 1280
