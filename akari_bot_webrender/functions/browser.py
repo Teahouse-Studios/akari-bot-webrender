@@ -45,7 +45,8 @@ class Browser:
                 else:
                     raise ValueError(
                         "Unsupported browser type. Use \"chromium\" or \"firefox\".")
-                self.browser = await _b.launch(headless=not self.debug, executable_path=executable_path)
+                self.browser = await _b.launch(headless=not self.debug,
+                                               executable_path=executable_path)
                 while not self.browser:
                     self.logger.info("Waiting for browser to launch...")
                     await asyncio.sleep(1)
