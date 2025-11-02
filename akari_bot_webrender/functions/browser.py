@@ -6,7 +6,7 @@ from playwright import async_api
 from playwright.async_api import Playwright, Browser as BrowserProcess, BrowserContext, ViewportSize
 from playwright_stealth import stealth_async
 
-from ..constants import base_user_agent, base_width, base_height
+from ..constants import browser_user_agent, base_user_agent, base_width, base_height
 from .logger import LoggingLogger
 
 
@@ -26,7 +26,9 @@ class Browser:
             self.logs_path = logs_path
         self.logger = LoggingLogger(debug=debug, logs_path=logs_path)
 
-    async def browser_init(self, browse_type: Literal["chrome", "chromium", "firefox"] = "chromium",
+    async def browser_init(self,
+                           browse_type: Literal["chrome",
+                                                "chromium", "firefox"] = "chromium",
                            width: int = base_width,
                            height: int = base_height,
                            user_agent: str = user_agent,
@@ -50,10 +52,11 @@ class Browser:
                 while not self.browser:
                     self.logger.info("Waiting for browser to launch...")
                     await asyncio.sleep(1)
-                self.contexts[f"{width}x{height}_{locale}"] = await self.browser.new_context(user_agent=user_agent,
-                                                                                             viewport=ViewportSize(
-                                                                                                 width=width, height=height),
-                                                                                             locale=locale)
+                ctx_key = f"{width}x{height}_{locale}"
+                self.contexts[ctx_key] = await self.browser.new_context(user_agent=user_agent,
+                                                                        viewport=ViewportSize(
+                                                                            width=width, height=height),
+                                                                        locale=locale)
                 self.logger.success("Successfully launched browser.")
                 return True
             except Exception:
@@ -76,13 +79,18 @@ class Browser:
         self.logger.info("Browser closed.")
         return True
 
-    async def new_page(self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True):
-        if f"{width}x{height}_{locale}" not in self.contexts:
-            self.contexts[f"{width}x{height}_{locale}"] = await self.browser.new_context(user_agent=self.user_agent,
-                                                                                         viewport=ViewportSize(
-                                                                                             width=width, height=height),
-                                                                                         locale=locale)
-        page = await self.contexts[f"{width}x{height}_{locale}"].new_page()
+    async def new_page(self,
+                       width: int = base_width,
+                       height: int = base_height,
+                       locale: str = "zh_cn",
+                       stealth: bool = True):
+        ctx_key = f"{width}x{height}_{locale}"
+        if ctx_key not in self.contexts:
+            self.contexts[ctx_key] = await self.browser.new_context(user_agent=browser_user_agent if stealth else self.user_agent,
+                                                                    iewport=ViewportSize(
+                                                                        width=width, height=height),
+                                                                    locale=locale)
+        page = await self.contexts[ctx_key].new_page()
         if stealth:
             await stealth_async(page)
         return page

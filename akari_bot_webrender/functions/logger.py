@@ -44,7 +44,8 @@ class LoggingLogger:
 
         if logs_path:
             self.log.add(
-                sink=Path(self.log_path) / "WebRender_debug_{time:YYYY-MM-DD}.log",
+                sink=Path(self.log_path) /
+                "WebRender_debug_{time:YYYY-MM-DD}.log",
                 format=basic_logger_format(),
                 rotation="00:00",
                 retention="1 day",
