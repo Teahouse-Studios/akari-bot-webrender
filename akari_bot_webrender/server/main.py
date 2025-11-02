@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, ORJSONResponse
 from ..functions.exceptions import ElementNotFound, RequiredURL
 from ..functions.main import WebRender
 from ..functions.options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, \
-    SectionScreenshotOptions, SourceOptions
+    SectionScreenshotOptions, SourceOptions, StatusOptions
 
 with open("config.json", "r") as f:
     config = json.loads(f.read())["server"]
@@ -75,8 +75,9 @@ async def source(options: SourceOptions):
 
 
 @app.get("/status/")
-async def status():
-    return ORJSONResponse(content=await webrender.status())
+@app.post("/status/")
+async def status(options: StatusOptions = None):
+    return ORJSONResponse(content=await webrender.status(options))
 
 
 @app.get("/favicon.ico")

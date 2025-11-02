@@ -18,7 +18,6 @@ class Browser:
     export_logs: bool = False
     logs_path = None
     logger: LoggingLogger
-    user_agent = base_user_agent
 
     def __init__(self, debug: bool = False, export_logs: bool = False, logs_path: str | Path = None):
         self.debug = debug
@@ -31,7 +30,6 @@ class Browser:
                                                 "chromium", "firefox"] = "chromium",
                            width: int = base_width,
                            height: int = base_height,
-                           user_agent: str = user_agent,
                            locale: str = "zh_cn",
                            executable_path: str | Path = None):
         if not self.playwright and not self.browser:
@@ -53,10 +51,10 @@ class Browser:
                     self.logger.info("Waiting for browser to launch...")
                     await asyncio.sleep(1)
                 ctx_key = f"{width}x{height}_{locale}"
-                self.contexts[ctx_key] = await self.browser.new_context(user_agent=user_agent,
-                                                                        viewport=ViewportSize(
-                                                                            width=width, height=height),
-                                                                        locale=locale)
+                self.contexts[ctx_key] = await self.browser.new_context(
+                    user_agent=base_user_agent,
+                    viewport=ViewportSize(width=width, height=height),
+                    locale=locale)
                 self.logger.success("Successfully launched browser.")
                 return True
             except Exception:
@@ -80,16 +78,17 @@ class Browser:
         return True
 
     async def new_page(self,
-                       width: int = base_width,
-                       height: int = base_height,
-                       locale: str = "zh_cn",
-                       stealth: bool = True):
-        ctx_key = f"{width}x{height}_{locale}"
+                    width: int = base_width,
+                    height: int = base_height,
+                    locale: str = "zh_cn",
+                    stealth: bool = True):
+        ctx_key = f"{width}x{height}_{locale}{"_stealth" if stealth else ""}"
         if ctx_key not in self.contexts:
-            self.contexts[ctx_key] = await self.browser.new_context(user_agent=browser_user_agent if stealth else self.user_agent,
-                                                                    iewport=ViewportSize(
-                                                                        width=width, height=height),
-                                                                    locale=locale)
+            self.contexts[ctx_key] = await self.browser.new_context(
+                user_agent=browser_user_agent if stealth else self.user_agent,
+                viewport=ViewportSize(width=width, height=height),
+                locale=locale
+            )
         page = await self.contexts[ctx_key].new_page()
         if stealth:
             await stealth_async(page)
