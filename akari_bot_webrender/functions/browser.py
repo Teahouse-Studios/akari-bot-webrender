@@ -85,7 +85,7 @@ class Browser:
         ctx_key = f"{width}x{height}_{locale}{"_stealth" if stealth else ""}"
         if ctx_key not in self.contexts:
             self.contexts[ctx_key] = await self.browser.new_context(
-                user_agent=browser_user_agent if stealth else self.user_agent,
+                user_agent=browser_user_agent if stealth else base_user_agent,
                 viewport=ViewportSize(width=width, height=height),
                 locale=locale
             )
