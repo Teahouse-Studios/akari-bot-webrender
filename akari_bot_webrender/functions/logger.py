@@ -35,7 +35,7 @@ class LoggingLogger:
         self.log_path = logs_path
 
         self.log.add(
-            sys.stderr,
+            sys.stdout,
             format=basic_logger_format(),
             level="DEBUG" if debug else "INFO",
             colorize=True,
