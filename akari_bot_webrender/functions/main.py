@@ -175,8 +175,6 @@ class WebRender:
                 content_height = content_size.get(
                     "height") + content_size.get("y") - total_content_height + max_screenshot_height
             await page.evaluate(f"window.scroll({content_size.get("x")}, {y_pos})")
-            await asyncio.sleep(3)
-            # wait for page content to load (e.g. images, lazy loading, etc.), hard to detect so just wait for 3 seconds...
             self.logger.info("X:" + str(content_size.get("x")) + " Y:" + str(y_pos) +
                              " Width:" + str(content_size.get("width")) + " Height:" + str(content_height))
 
