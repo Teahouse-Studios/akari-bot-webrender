@@ -152,7 +152,7 @@ class WebRender:
         dpr = page.viewport_size.get("deviceScaleFactor", 1)
         screenshot_height = math.floor(screenshot_height / dpr)
         self.logger.info(f"Content size: {content_size}, DPR: {
-            dpr}, Screenshot height: {screenshot_height}")
+                         dpr}, Screenshot height: {screenshot_height}")
 
         # If content height is less than max screenshot height, take a single screenshot and return as a list with one item
 
@@ -168,9 +168,7 @@ class WebRender:
         y_pos = content_size.get("y")
         total_content_height = content_size.get("y")
         images = []
-        while True:
-            if y_pos > content_size.get("height") + content_size.get("y"):
-                break
+        while y_pos < content_size.get("height") + content_size.get("y"):
             total_content_height += max_screenshot_height
             content_height = max_screenshot_height
             if total_content_height > content_size.get("height") + content_size.get("y"):
@@ -178,6 +176,7 @@ class WebRender:
                     "height") + content_size.get("y") - total_content_height + max_screenshot_height
             await page.evaluate(f"window.scroll({content_size.get("x")}, {y_pos})")
             await asyncio.sleep(3)
+            # wait for page content to load (e.g. images, lazy loading, etc.), hard to detect so just wait for 3 seconds...
             self.logger.info("X:" + str(content_size.get("x")) + " Y:" + str(y_pos) +
                              " Width:" + str(content_size.get("width")) + " Height:" + str(content_height))
 
