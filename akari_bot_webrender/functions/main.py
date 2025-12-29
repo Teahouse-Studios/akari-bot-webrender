@@ -1,7 +1,6 @@
-import asyncio
 import base64
-import datetime
 import math
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal, Optional, Tuple
@@ -114,7 +113,7 @@ class WebRender:
                           url=None, css=None, stealth=True):
         page = None
         try:
-            start_time = datetime.datetime.now().timestamp()
+            start_time = time.time()
             page = await self.browser.new_page(width=width,
                                                height=height,
                                                locale=locale,
@@ -190,7 +189,7 @@ class WebRender:
         return images
 
     @classmethod
-    async def add_count_box(cls, page: Page, element: str, start_time: float = datetime.datetime.now().timestamp()):
+    async def add_count_box(cls, page: Page, element: str, start_time: float = time.time()):
         with open(f"{templates_path}/add_count_box.js") as f:
             js_code = f.read()
         return await page.evaluate(js_code, {"selected_element": element, "start_time": int(start_time * 1000),

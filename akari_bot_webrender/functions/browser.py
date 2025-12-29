@@ -78,10 +78,10 @@ class Browser:
         return True
 
     async def new_page(self,
-                    width: int = base_width,
-                    height: int = base_height,
-                    locale: str = "zh_cn",
-                    stealth: bool = True):
+                       width: int = base_width,
+                       height: int = base_height,
+                       locale: str = "zh_cn",
+                       stealth: bool = True):
         ctx_key = f"{width}x{height}_{locale}{"_stealth" if stealth else ""}"
         if ctx_key not in self.contexts:
             self.contexts[ctx_key] = await self.browser.new_context(
