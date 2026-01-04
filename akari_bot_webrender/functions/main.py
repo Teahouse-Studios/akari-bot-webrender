@@ -3,7 +3,7 @@ import math
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 import httpx
 import orjson as json
@@ -79,7 +79,7 @@ class WebRender:
 
     def __init__(self,
                  debug: bool = False,
-                 remote_webrender_url: Optional[str] = None,
+                 remote_webrender_url: str | None = None,
                  remote_only: bool = False,
                  export_logs=False,
                  logs_path=None,
@@ -134,7 +134,7 @@ class WebRender:
                 await page.close()
 
     @staticmethod
-    async def select_element(el: str | list, pg: Page) -> Tuple[Optional[ElementHandle], Optional[str]]:
+    async def select_element(el: str | list, pg: Page) -> tuple[ElementHandle | None, str | None]:
         if isinstance(el, str):
             return (await pg.query_selector(el)), el
         for obj in el:

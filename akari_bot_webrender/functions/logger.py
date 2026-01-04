@@ -1,7 +1,6 @@
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -67,7 +66,7 @@ class LoggingLogger:
         if debug:
             self.log.debug("Debug mode is enabled.")
 
-    def exception(self, message: Optional[str] = None):
+    def exception(self, message: str | None = None):
         if message:
             self.error(f"{message}\n{traceback.format_exc()}")
         else:

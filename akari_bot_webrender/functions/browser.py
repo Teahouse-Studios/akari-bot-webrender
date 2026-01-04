@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from playwright import async_api
 from playwright.async_api import Playwright, Browser as BrowserProcess, BrowserContext, ViewportSize
@@ -11,8 +11,8 @@ from .logger import LoggingLogger
 
 
 class Browser:
-    playwright: Optional[Playwright] = None
-    browser: Optional[BrowserProcess] = None
+    playwright: Playwright | None = None
+    browser: BrowserProcess | None = None
     contexts: dict[str, BrowserContext] = {}
     debug: bool = False
     export_logs: bool = False
