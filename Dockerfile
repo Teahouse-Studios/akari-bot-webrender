@@ -6,10 +6,11 @@ LABEL org.opencontainers.image.source=https://github.com/Teahouse-Studios/akari-
 LABEL org.opencontainers.image.vendor="Teahouse Studios"
 LABEL org.opencontainers.image.licenses=MIT
 LABEL org.opencontainers.image.title="AkariBot WebRender"
-MAINTAINER Teahouse Studios <admin@teahou.se>
+LABEL maintainer="Teahouse Studios <admin@teahou.se>"
 
 WORKDIR /akari-bot-webrender
-ADD . .
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
     fonts-noto-cjk \
@@ -33,8 +34,9 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install-deps
-RUN playwright install
+RUN playwright install --with-deps chromium
 
+ADD . .
 CMD ["python", "./run_server.py"]
