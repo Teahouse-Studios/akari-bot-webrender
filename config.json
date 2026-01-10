@@ -5,6 +5,6 @@
     "debug": false,
     "export_logs": false,
     "browser_type": "chromium",
-    "executable_path": ""
+    "executable_path": null
   }
 }

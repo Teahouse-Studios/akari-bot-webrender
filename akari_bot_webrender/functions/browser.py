@@ -31,7 +31,7 @@ class Browser:
                            width: int = base_width,
                            height: int = base_height,
                            locale: str = "zh_cn",
-                           executable_path: str | Path = None):
+                           executable_path: str | Path | None = None):
         if not self.playwright and not self.browser:
             self.logger.info("Launching browser...")
             try:
