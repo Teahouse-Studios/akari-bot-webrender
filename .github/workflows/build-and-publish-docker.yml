@@ -42,6 +42,11 @@ jobs:
           fi
           echo "Docker tag set to $TAG"
 
+      - name: Update config.json host before build
+        run: |
+          jq '.server.host = "0.0.0.0"' config.json > config.tmp.json
+          mv config.tmp.json config.json
+
       - name: Build and push Docker image
         env:
           IMAGE_NAME: dorowolf/akari-bot-webrender
