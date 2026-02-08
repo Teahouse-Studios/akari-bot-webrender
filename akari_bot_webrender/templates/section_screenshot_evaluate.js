@@ -3,9 +3,19 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
   console.log(`Elements to disable: ${elements_to_disable}`); // skipcq
 
   const levels = ["H1", "H2", "H3", "H4", "H5", "H6"];
-  let sec = document.getElementById(section).parentNode;
+  let sec = document.getElementById(section);
+  while (sec) {
+    if (levels.includes(sec.tagName)) {
+      break;
+    }
+    sec = sec.parentNode;
+  }
   let sec_level = sec.tagName;
-  if (sec.parentNode.className.includes("ext-discussiontools-init-section")) {
+  console.log(sec_level);
+  if (
+    sec.parentNode.className.includes("ext-discussiontools-init-section") ||
+    sec.parentNode.className.includes("mw-heading")
+  ) {
     // wo yi ding yao sha le ni men
     sec = sec.parentNode;
   }
@@ -23,11 +33,13 @@ function section_screenshot_evaluate({ section, elements_to_disable }) {
     }
     if (
       next_sibling.tagName === "DIV" &&
-      next_sibling.className.includes("ext-discussiontools-init-section")
+      (next_sibling.className.includes("ext-discussiontools-init-section") ||
+        next_sibling.className.includes("mw-heading"))
     ) {
       let child = next_sibling.firstChild;
       let bf = false;
       while (child) {
+        console.log(`Child tag: ${child.tagName}`); // skipcq
         if (
           levels.includes(child.tagName) &&
           levels.indexOf(child.tagName) <= levels.indexOf(sec_level)
