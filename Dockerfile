@@ -8,7 +8,10 @@ LABEL org.opencontainers.image.licenses=MIT
 LABEL org.opencontainers.image.title="AkariBot WebRender"
 LABEL maintainer="Teahouse Studios <admin@teahou.se>"
 
+RUN pip install uv
+
 WORKDIR /akari-bot-webrender
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -34,9 +37,9 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install --with-deps chromium
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen
+RUN uv run playwright install --with-deps chromium
 
 ADD . .
 CMD ["python", "./run_server.py"]

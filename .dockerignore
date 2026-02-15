@@ -1,9 +1,8 @@
 .git
 .github
-.vscode
 .deepsource.toml
 .editorconfig
 .gitignore
 .pre-commit-config.yaml
-pyproject.toml
+requirements.txt
 renovate.json
