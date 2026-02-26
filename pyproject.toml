@@ -40,3 +40,12 @@ include = ["/akari_bot_webrender"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["akari_bot_webrender"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = ["E402", "F405", "F403", "E741", "E721"]
+
+[tool.ruff.format]
+quote-style = "double"

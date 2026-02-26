@@ -43,14 +43,12 @@ class LoggingLogger:
 
         if logs_path:
             self.log.add(
-                sink=Path(self.log_path) /
-                "WebRender_debug_{time:YYYY-MM-DD}.log",
+                sink=Path(self.log_path) / "WebRender_debug_{time:YYYY-MM-DD}.log",
                 format=basic_logger_format(),
                 rotation="00:00",
                 retention="1 day",
                 level="DEBUG",
-                filter=lambda record: record["level"].name == "DEBUG" and record["extra"].get(
-                    "name") == "WebRender",
+                filter=lambda record: record["level"].name == "DEBUG" and record["extra"].get("name") == "WebRender",
                 encoding="utf8",
             )
             self.log.add(
@@ -60,8 +58,7 @@ class LoggingLogger:
                 retention="10 days",
                 level="INFO",
                 encoding="utf8",
-                filter=lambda record: record["extra"].get(
-                    "name") == "WebRender",
+                filter=lambda record: record["extra"].get("name") == "WebRender",
             )
         if debug:
             self.log.debug("Debug mode is enabled.")

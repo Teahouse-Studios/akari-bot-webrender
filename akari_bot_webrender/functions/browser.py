@@ -25,13 +25,14 @@ class Browser:
             self.logs_path = logs_path
         self.logger = LoggingLogger(debug=debug, logs_path=logs_path)
 
-    async def browser_init(self,
-                           browse_type: Literal["chrome",
-                                                "chromium", "firefox"] = "chromium",
-                           width: int = base_width,
-                           height: int = base_height,
-                           locale: str = "zh_cn",
-                           executable_path: str | Path | None = None):
+    async def browser_init(
+        self,
+        browse_type: Literal["chrome", "chromium", "firefox"] = "chromium",
+        width: int = base_width,
+        height: int = base_height,
+        locale: str = "zh_cn",
+        executable_path: str | Path | None = None,
+    ):
         if not self.playwright and not self.browser:
             self.logger.info("Launching browser...")
             try:
@@ -43,18 +44,15 @@ class Browser:
                 elif browse_type == "firefox":
                     _b = self.playwright.firefox
                 else:
-                    raise ValueError(
-                        "Unsupported browser type. Use \"chromium\" or \"firefox\".")
-                self.browser = await _b.launch(headless=not self.debug,
-                                               executable_path=executable_path)
+                    raise ValueError('Unsupported browser type. Use "chromium" or "firefox".')
+                self.browser = await _b.launch(headless=not self.debug, executable_path=executable_path)
                 while not self.browser:
                     self.logger.info("Waiting for browser to launch...")
                     await asyncio.sleep(1)
                 ctx_key = f"{width}x{height}_{locale}"
                 self.contexts[ctx_key] = await self.browser.new_context(
-                    user_agent=base_user_agent,
-                    viewport=ViewportSize(width=width, height=height),
-                    locale=locale)
+                    user_agent=base_user_agent, viewport=ViewportSize(width=width, height=height), locale=locale
+                )
                 self.logger.success("Successfully launched browser.")
                 return True
             except Exception:
@@ -77,17 +75,15 @@ class Browser:
         self.logger.info("Browser closed.")
         return True
 
-    async def new_page(self,
-                       width: int = base_width,
-                       height: int = base_height,
-                       locale: str = "zh_cn",
-                       stealth: bool = True):
-        ctx_key = f"{width}x{height}_{locale}{"_stealth" if stealth else ""}"
+    async def new_page(
+        self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True
+    ):
+        ctx_key = f"{width}x{height}_{locale}{'_stealth' if stealth else ''}"
         if ctx_key not in self.contexts:
             self.contexts[ctx_key] = await self.browser.new_context(
                 user_agent=browser_user_agent if stealth else base_user_agent,
                 viewport=ViewportSize(width=width, height=height),
-                locale=locale
+                locale=locale,
             )
         page = await self.contexts[ctx_key].new_page()
         if stealth:

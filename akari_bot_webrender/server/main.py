@@ -7,26 +7,32 @@ from fastapi.responses import FileResponse, ORJSONResponse
 
 from ..functions.exceptions import ElementNotFound, RequiredURL
 from ..functions.main import WebRender
-from ..functions.options import LegacyScreenshotOptions, PageScreenshotOptions, ElementScreenshotOptions, \
-    SectionScreenshotOptions, SourceOptions, StatusOptions
+from ..functions.options import (
+    LegacyScreenshotOptions,
+    PageScreenshotOptions,
+    ElementScreenshotOptions,
+    SectionScreenshotOptions,
+    SourceOptions,
+    StatusOptions,
+)
 
 with open("config.json", "r") as f:
     config = json.loads(f.read())["server"]
 
 
-webrender = WebRender(debug=config.get("debug", False),
-                      export_logs=config.get("export_logs", False)
-                      )
+webrender = WebRender(debug=config.get("debug", False), export_logs=config.get("export_logs", False))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        await webrender.browser_init(browse_type=config.get("browser_type", "chromium"),
-                                     executable_path=config.get("executable_path"))
+        await webrender.browser_init(
+            browse_type=config.get("browser_type", "chromium"), executable_path=config.get("executable_path")
+        )
         yield
     finally:
         await webrender.browser_close()
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -69,8 +75,7 @@ async def source(options: SourceOptions):
     try:
         source_content = await webrender.source(options)
     except RequiredURL:
-        raise HTTPException(
-            status_code=400, detail="URL parameter is required")
+        raise HTTPException(status_code=400, detail="URL parameter is required")
     return ORJSONResponse(content=source_content)
 
 
@@ -89,8 +94,7 @@ def run():
     import uvicorn  # noqa
 
     try:
-        webrender.logger.info(f"Server starting on {
-                              config["host"]}:{config["port"]}")
+        webrender.logger.info(f"Server starting on {config['host']}:{config['port']}")
         uvicorn.run(app, host=config["host"], port=config["port"])
     except KeyboardInterrupt:
         webrender.logger.info("Server stopped")
