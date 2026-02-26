@@ -52,8 +52,16 @@ jobs:
           IMAGE_NAME: dorowolf/akari-bot-webrender
         run: |
           docker buildx create --use
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            -t $IMAGE_NAME:$TAG \
-            -t $IMAGE_NAME:latest \
-            --push .
+
+          if [ "${{ github.event_name }}" == "release" ] && [ "${{ github.event.release.prerelease }}" == "false" ]; then
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              -t $IMAGE_NAME:$TAG \
+              -t $IMAGE_NAME:latest \
+              --push .
+          else
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              -t $IMAGE_NAME:$TAG \
+              --push .
+          fi
