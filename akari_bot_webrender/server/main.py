@@ -27,7 +27,7 @@ webrender = WebRender(debug=config.get("debug", False), export_logs=config.get("
 async def lifespan(app: FastAPI):
     try:
         await webrender.browser_init(
-            browse_type=config.get("browser_type", "chromium"), executable_path=config.get("executable_path")
+            browser_type=config.get("browser_type", "chromium"), executable_path=config.get("executable_path")
         )
         yield
     finally:

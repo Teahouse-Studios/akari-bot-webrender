@@ -27,7 +27,7 @@ class Browser:
 
     async def browser_init(
         self,
-        browse_type: Literal["chrome", "chromium", "firefox"] = "chromium",
+        browser_type: Literal["chrome", "chromium", "firefox"] = "chromium",
         width: int = base_width,
         height: int = base_height,
         locale: str = "zh_cn",
@@ -39,9 +39,9 @@ class Browser:
                 _p = async_api.async_playwright()
                 self.playwright = await _p.start()
                 _b = None
-                if browse_type in ["chrome", "chromium"]:
+                if browser_type in ["chrome", "chromium"]:
                     _b = self.playwright.chromium
-                elif browse_type == "firefox":
+                elif browser_type == "firefox":
                     _b = self.playwright.firefox
                 else:
                     raise ValueError('Unsupported browser type. Use "chromium" or "firefox".')
