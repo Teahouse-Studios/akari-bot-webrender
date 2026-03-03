@@ -63,7 +63,7 @@ def webrender_fallback(func):
 
 
 class WebRender:
-    browser: Browser = None
+    browser: Browser | None = None
     debug: bool = False
     remote_webrender_url = None
     remote_only = False
@@ -78,7 +78,7 @@ class WebRender:
         remote_only: bool = False,
         export_logs=False,
         logs_path=None,
-        name: str = None,
+        name: str | None = None,
     ):
         """
         :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
@@ -108,23 +108,24 @@ class WebRender:
         self, width=base_width, height=base_height, locale="zh_cn", content=None, url=None, css=None, stealth=True
     ):
         page = None
-        try:
-            start_time = time.time()
-            page = await self.browser.new_page(width=width, height=height, locale=locale, stealth=stealth)
-            if content:
-                await page.set_content(content, wait_until="networkidle")
-            if url:
-                await page.goto(url, wait_until="networkidle")
-            if content or url:
-                with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
-                    custom_css = f.read()
-                await page.add_style_tag(content=custom_css)
-                if css:
-                    await page.add_style_tag(content=css)
-            yield page, start_time
-        finally:
-            if not self.debug and page:
-                await page.close()
+        if self.browser:
+            try:
+                start_time = time.time()
+                page = await self.browser.new_page(width=width, height=height, locale=locale, stealth=stealth)
+                if content:
+                    await page.set_content(content, wait_until="networkidle")
+                if url:
+                    await page.goto(url, wait_until="networkidle")
+                if content or url:
+                    with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
+                        custom_css = f.read()
+                    await page.add_style_tag(content=custom_css)
+                    if css:
+                        await page.add_style_tag(content=css)
+                yield page, start_time
+            finally:
+                if not self.debug and page:
+                    await page.close()
 
     @staticmethod
     async def select_element(el: str | list, pg: Page) -> tuple[ElementHandle | None, str | None]:
@@ -341,23 +342,26 @@ class WebRender:
             return _source
 
     @webrender_fallback
-    async def status(self, options: StatusOptions = None):
+    async def status(self, options: StatusOptions | None = None):
         contexts_open = {}
-        for context in self.browser.contexts:
-            contexts_open[context] = []
-            for page in self.browser.contexts[context].pages:
-                contexts_open[context].append(page.url)
+        if self.browser:
+            for context in self.browser.contexts:
+                contexts_open[context] = []
+                for page in self.browser.contexts[context].pages:
+                    contexts_open[context].append(page.url)
 
-        contexts_total = len(self.browser.browser.contexts)
+            contexts_total = 0
+            if self.browser.browser:
+                contexts_total = len(self.browser.browser.contexts)
 
-        return {
-            "browser_initialized": self.browser.browser is not None,
-            "debug_mode": self.debug,
-            "remote_only": self.remote_only,
-            "export_logs": self.export_logs,
-            "logs_path": str(self.logs_path) if self.logs_path else None,
-            "name": self.name,
-            "contexts_open_sorted": contexts_open,
-            "contexts_total": contexts_total,
-            "leaked": len(contexts_open) != contexts_total,
-        }
+            return {
+                "browser_initialized": self.browser.browser is not None,
+                "debug_mode": self.debug,
+                "remote_only": self.remote_only,
+                "export_logs": self.export_logs,
+                "logs_path": str(self.logs_path) if self.logs_path else None,
+                "name": self.name,
+                "contexts_open_sorted": contexts_open,
+                "contexts_total": contexts_total,
+                "leaked": len(contexts_open) != contexts_total,
+            }

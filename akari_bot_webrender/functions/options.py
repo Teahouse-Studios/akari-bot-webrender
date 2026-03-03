@@ -12,9 +12,9 @@ class BaseOptions(BaseModel):
     counttime: bool = True
     width: int = base_width
     height: int = base_height
-    url: str = None
-    content: str = None
-    css: str = None
+    url: str | None = None
+    content: str | None = None
+    css: str | None = None
     stealth: bool = True
 
 
@@ -27,17 +27,17 @@ class PageScreenshotOptions(BaseOptions):
 
 
 class ElementScreenshotOptions(BaseOptions):
-    element: str | list = None
-    elements_to_disable: list = None
+    element: str | list | None = None
+    elements_to_disable: list | None = None
 
 
 class SectionScreenshotOptions(BaseOptions):
-    section: str | list = None
-    elements_to_disable: list = None
+    section: str | list | None = None
+    elements_to_disable: list | None = None
 
 
 class SourceOptions(BaseModel):
-    url: str = None
+    url: str | None = None
     raw_text: bool = False
     locale: str = "zh_cn"
     stealth: bool = True

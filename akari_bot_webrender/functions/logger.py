@@ -15,7 +15,7 @@ def basic_logger_format():
 
 
 class LoggingLogger:
-    def __init__(self, debug: bool = False, logs_path: str | Path = None):
+    def __init__(self, debug: bool = False, logs_path: str | Path | None = None):
         try:
             logger.remove(0)
         except ValueError:
@@ -41,7 +41,7 @@ class LoggingLogger:
             filter=lambda record: record["extra"].get("name") == "WebRender",
         )
 
-        if logs_path:
+        if self.log_path:
             self.log.add(
                 sink=Path(self.log_path) / "WebRender_debug_{time:YYYY-MM-DD}.log",
                 format=basic_logger_format(),

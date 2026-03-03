@@ -19,7 +19,7 @@ class Browser:
     logs_path = None
     logger: LoggingLogger
 
-    def __init__(self, debug: bool = False, export_logs: bool = False, logs_path: str | Path = None):
+    def __init__(self, debug: bool = False, export_logs: bool = False, logs_path: str | Path | None = None):
         self.debug = debug
         if export_logs:
             self.logs_path = logs_path
@@ -79,7 +79,7 @@ class Browser:
         self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True
     ):
         ctx_key = f"{width}x{height}_{locale}{'_stealth' if stealth else ''}"
-        if ctx_key not in self.contexts:
+        if self.browser and ctx_key not in self.contexts:
             self.contexts[ctx_key] = await self.browser.new_context(
                 user_agent=browser_user_agent if stealth else base_user_agent,
                 viewport=ViewportSize(width=width, height=height),

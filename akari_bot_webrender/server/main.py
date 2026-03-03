@@ -81,7 +81,7 @@ async def source(options: SourceOptions):
 
 @app.get("/status/")
 @app.post("/status/")
-async def status(options: StatusOptions = None):
+async def status(options: StatusOptions | None = None):
     return ORJSONResponse(content=await webrender.status(options))
 
 
