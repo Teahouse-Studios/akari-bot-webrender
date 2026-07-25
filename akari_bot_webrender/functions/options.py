@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from ..constants import base_width, base_height
+from ..constants import base_height, base_width
 
 
 class BaseOptions(BaseModel):
@@ -39,6 +39,12 @@ class SectionScreenshotOptions(BaseOptions):
 class SourceOptions(BaseModel):
     url: str | None = None
     raw_text: bool = False
+    locale: str = "zh_cn"
+    stealth: bool = True
+
+
+class RawOptions(BaseModel):
+    url: str | None = None
     locale: str = "zh_cn"
     stealth: bool = True
 

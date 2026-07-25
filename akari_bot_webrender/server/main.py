@@ -8,9 +8,10 @@ from fastapi.responses import FileResponse, ORJSONResponse
 from ..functions.exceptions import ElementNotFound, RequiredURL
 from ..functions.main import WebRender
 from ..functions.options import (
+    ElementScreenshotOptions,
     LegacyScreenshotOptions,
     PageScreenshotOptions,
-    ElementScreenshotOptions,
+    RawOptions,
     SectionScreenshotOptions,
     SourceOptions,
     StatusOptions,
@@ -79,6 +80,15 @@ async def source(options: SourceOptions):
     return ORJSONResponse(content=source_content)
 
 
+@app.post("/get_raw/")
+async def get_raw(options: RawOptions):
+    try:
+        result = await webrender.get_raw(options)
+    except RequiredURL:
+        raise HTTPException(status_code=400, detail="URL parameter is required")
+    return ORJSONResponse(content=result)
+
+
 @app.get("/status/")
 @app.post("/status/")
 async def status(options: StatusOptions | None = None):
@@ -91,7 +101,7 @@ async def favicon():
 
 
 def run():
-    import uvicorn  # noqa
+    import uvicorn
 
     try:
         webrender.logger.info(f"Server starting on {config['host']}:{config['port']}")

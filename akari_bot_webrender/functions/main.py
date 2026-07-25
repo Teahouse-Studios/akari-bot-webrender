@@ -8,19 +8,20 @@ from typing import Literal
 import httpx
 import orjson as json
 from jinja2 import Environment, FileSystemLoader
-from playwright.async_api import Page, ElementHandle, FloatRect
+from playwright.async_api import ElementHandle, FloatRect, Page
 
+from ..constants import base_height, base_width, elements_to_disable, max_screenshot_height, templates_path
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
 from .options import (
+    ElementScreenshotOptions,
     LegacyScreenshotOptions,
     PageScreenshotOptions,
-    ElementScreenshotOptions,
+    RawOptions,
     SectionScreenshotOptions,
     SourceOptions,
     StatusOptions,
 )
-from ..constants import templates_path, elements_to_disable, max_screenshot_height, base_width, base_height
 
 env = Environment(loader=FileSystemLoader(templates_path), autoescape=True, enable_async=True)
 
@@ -340,6 +341,20 @@ class WebRender:
                 return await _source.inner_text()
 
             return _source
+
+    @webrender_fallback
+    async def get_raw(self, options: RawOptions):
+        url = options.url
+        if not url:
+            raise RequiredURL
+        async with self.render_page(locale=options.locale, stealth=options.stealth) as (page, _start_time):
+            resp = await page.request.fetch(url)
+            body = await resp.body()
+            return {
+                "status": resp.status,
+                "content_type": resp.headers.get("content-type", "application/octet-stream"),
+                "data": base64.b64encode(body).decode(),
+            }
 
     @webrender_fallback
     async def status(self, options: StatusOptions | None = None):
