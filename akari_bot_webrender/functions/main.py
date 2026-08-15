@@ -2,6 +2,8 @@ import base64
 import math
 import time
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
+from functools import wraps
 from pathlib import Path
 from typing import Literal
 
@@ -24,52 +26,59 @@ from .options import (
 )
 
 env = Environment(loader=FileSystemLoader(templates_path), autoescape=True, enable_async=True)
+custom_css = (templates_path / "custom.css").read_text(encoding="utf-8")
+add_count_box_script = (templates_path / "add_count_box.js").read_text(encoding="utf-8")
+element_screenshot_script = (templates_path / "element_screenshot_evaluate.js").read_text(encoding="utf-8")
+section_screenshot_script = (templates_path / "section_screenshot_evaluate.js").read_text(encoding="utf-8")
+
+remote_endpoints = {
+    "legacy_screenshot": "legacy_screenshot",
+    "page_screenshot": "page",
+    "element_screenshot": "element_screenshot",
+    "section_screenshot": "section_screenshot",
+    "source": "source",
+    "get_raw": "get_raw",
+    "status": "status",
+}
+remote_fallback_hop = ContextVar("remote_fallback_hop", default=0)
+remote_fallback_header = "X-WebRender-Fallback-Hop"
 
 
 def webrender_fallback(func):
-    async def wrapper(self, options):
-        if not self.browser.browser and not self.remote_only:
+    @wraps(func)
+    async def wrapper(self, options=None):
+        remote_endpoint = remote_endpoints.get(func.__name__, func.__name__)
+
+        if self.remote_only:
+            if not self.remote_webrender_url:
+                self.logger.error("Remote-only mode is enabled, but no remote WebRender URL is configured.")
+                return None
+            self.logger.info("Local WebRender is disabled, using remote WebRender only.")
+            return await self._request_remote(remote_endpoint, options)
+
+        if not await self.browser.check_status():
             self.logger.warning("WebRender browser is not initialized.")
+            if self.remote_webrender_url:
+                return await self._request_remote(remote_endpoint, options)
             return None
-        request_remote = False
-        if self.remote_webrender_url and self.remote_only:
-            self.logger.warning("Local WebRender is disabled, using remote WebRender only.")
-            request_remote = True
-        else:
-            try:
-                self.logger.info(func.__name__ + " function called with options: " + str(options))
-                return await func(self, options)
-            except Exception:
-                self.logger.exception(f"WebRender processing failed with options: {options}:")
-                if self.remote_webrender_url:
-                    request_remote = True
-        if request_remote:
-            try:
-                if self.remote_webrender_url:
-                    self.logger.info("Trying get content from remote web render...")
-                    remote_url = self.remote_webrender_url + func.__name__ + "/"
-                    data = options.model_dump_json(exclude_none=True)
-                    self.logger.info(f"Remote URL: {remote_url}, Options: {data}")
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.post(remote_url, data=data, timeout=30, follow_redirects=True)
-                        if resp.status_code != 200:
-                            self.logger.error(f"Failed to render: {resp.text}, status code: {resp.status_code}")
-                            return None
-                        return json.loads(resp.read())
-            except Exception:
-                self.logger.exception("Remote WebRender processing failed: ")
+
+        try:
+            self.logger.info(func.__name__ + " function called with options: " + str(options))
+            result = await func(self, options)
+            if result is not None:
+                return result
+            self.logger.warning(f"Local WebRender returned no result for {func.__name__}.")
+        except Exception:
+            self.logger.exception(f"WebRender processing failed with options: {options}:")
+
+        if self.remote_webrender_url:
+            return await self._request_remote(remote_endpoint, options)
         return None
 
     return wrapper
 
 
 class WebRender:
-    browser: Browser | None = None
-    debug: bool = False
-    remote_webrender_url = None
-    remote_only = False
-    export_logs = False
-    logs_path = None
     name = "AkariBot WebRender™"
 
     def __init__(
@@ -80,16 +89,35 @@ class WebRender:
         export_logs=False,
         logs_path=None,
         name: str | None = None,
+        headless: bool | None = None,
+        keep_pages_open: bool | None = None,
+        remote_timeout: float = 30,
     ):
         """
-        :param debug: If True, the browser will run on non-headless mode, the page will not be closed after the screenshot is taken.
+        :param debug: Enable debug logging. For backward compatibility, it also enables headed mode and keeps pages open
+            unless ``headless`` and ``keep_pages_open`` are explicitly set.
+        :param headless: Run the browser without a visible window. Defaults to the inverse of ``debug``.
+        :param keep_pages_open: Keep rendered pages open after requests. Defaults to ``debug``.
+        :param remote_timeout: Timeout in seconds for requests to the remote WebRender service.
         """
         self.debug = debug
-        self.remote_webrender_url = remote_webrender_url
-        if self.remote_webrender_url and self.remote_webrender_url[-1] != "/":
-            self.remote_webrender_url += "/"
+        self.headless = not debug if headless is None else headless
+        self.keep_pages_open = debug if keep_pages_open is None else keep_pages_open
+        self.remote_webrender_url = None
+        if remote_webrender_url and remote_webrender_url.strip():
+            parsed_remote_url = httpx.URL(remote_webrender_url.strip())
+            if parsed_remote_url.scheme not in {"http", "https"} or not parsed_remote_url.host:
+                raise ValueError("remote_webrender_url must be an HTTP or HTTPS URL")
+            if parsed_remote_url.query or parsed_remote_url.fragment:
+                raise ValueError("remote_webrender_url must not contain a query string or fragment")
+            remote_raw_path = parsed_remote_url.raw_path.rstrip(b"/") + b"/"
+            self.remote_webrender_url = str(parsed_remote_url.copy_with(raw_path=remote_raw_path))
         self.remote_only = remote_only
+        self.remote_timeout = float(remote_timeout)
+        if not math.isfinite(self.remote_timeout) or self.remote_timeout <= 0:
+            raise ValueError("remote_timeout must be a finite number greater than zero")
         self.export_logs = export_logs
+        self.logs_path = None
         if export_logs:
             if logs_path:
                 self.logs_path = Path(logs_path)
@@ -98,11 +126,48 @@ class WebRender:
         if name:
             self.name = name
 
-        if not self.browser:
-            self.browser = Browser(debug=debug, logs_path=self.logs_path)
-            self.browser_init = self.browser.browser_init
-            self.browser_close = self.browser.close
-            self.logger = self.browser.logger
+        self.browser = Browser(
+            debug=debug,
+            export_logs=export_logs,
+            logs_path=self.logs_path,
+            headless=self.headless,
+        )
+        self.browser_init = self.browser.browser_init
+        self.browser_close = self.browser.close
+        self.logger = self.browser.logger
+
+    async def _request_remote(self, endpoint: str, options=None):
+        if not self.remote_webrender_url:
+            return None
+
+        current_hop = remote_fallback_hop.get()
+        if current_hop >= 1:
+            self.logger.error("Remote WebRender fallback limit reached; refusing to forward the request again.")
+            return None
+
+        remote_url = f"{self.remote_webrender_url}{endpoint}/"
+        payload = options.model_dump(mode="json", exclude_none=True) if options is not None else {}
+        try:
+            safe_remote_url = httpx.URL(remote_url).copy_with(
+                username=None,
+                password=None,
+                query=None,
+                fragment=None,
+            )
+            self.logger.info(f"Trying remote WebRender: {safe_remote_url}")
+            async with httpx.AsyncClient(timeout=self.remote_timeout, follow_redirects=True) as client:
+                resp = await client.post(
+                    remote_url,
+                    json=payload,
+                    headers={remote_fallback_header: str(current_hop + 1)},
+                )
+            if resp.status_code != 200:
+                self.logger.error(f"Remote WebRender failed: {resp.text}, status code: {resp.status_code}")
+                return None
+            return json.loads(resp.read())
+        except Exception:
+            self.logger.exception("Remote WebRender processing failed:")
+            return None
 
     @asynccontextmanager
     async def render_page(
@@ -118,14 +183,12 @@ class WebRender:
                 if url:
                     await page.goto(url, wait_until="networkidle")
                 if content or url:
-                    with open(f"{templates_path}/custom.css", "r", encoding="utf-8") as f:
-                        custom_css = f.read()
                     await page.add_style_tag(content=custom_css)
                     if css:
                         await page.add_style_tag(content=css)
                 yield page, start_time
             finally:
-                if not self.debug and page:
+                if not self.keep_pages_open and page:
                     await page.close()
 
     @staticmethod
@@ -198,10 +261,9 @@ class WebRender:
 
     @classmethod
     async def add_count_box(cls, page: Page, element: str, start_time: float = time.time()):
-        with open(f"{templates_path}/add_count_box.js") as f:
-            js_code = f.read()
         return await page.evaluate(
-            js_code, {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name}
+            add_count_box_script,
+            {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name},
         )
 
     async def select_element_and_screenshot(
@@ -279,10 +341,7 @@ class WebRender:
             css=options.css,
             stealth=options.stealth,
         ) as (page, start_time):
-            with open(f"{templates_path}/element_screenshot_evaluate.js", "r", encoding="utf-8") as f:
-                js_code = f.read()
-
-            await page.evaluate(js_code, elements_to_disable)
+            await page.evaluate(element_screenshot_script, elements_to_disable)
             images = await self.select_element_and_screenshot(
                 elements=options.element,
                 page=page,
@@ -304,10 +363,10 @@ class WebRender:
             css=options.css,
             stealth=options.stealth,
         ) as (page, start_time):
-            with open(f"{templates_path}/section_screenshot_evaluate.js", "r", encoding="utf-8") as f:
-                js_code = f.read()
-
-            await page.evaluate(js_code, {"section": options.section, "elements_to_disable": elements_to_disable})
+            await page.evaluate(
+                section_screenshot_script,
+                {"section": options.section, "elements_to_disable": elements_to_disable},
+            )
             images = await self.select_element_and_screenshot(
                 elements=".bot-sectionbox",
                 page=page,
@@ -325,7 +384,7 @@ class WebRender:
             raise RequiredURL
         async with self.render_page(locale=options.locale, url=options.url, stealth=options.stealth) as (
             page,
-            start_time,
+            _start_time,
         ):
             resp = await page.goto(url, wait_until="networkidle")
             if resp.status != 200:  # attempt to fetch the url content using fetch
@@ -370,9 +429,14 @@ class WebRender:
                 contexts_total = len(self.browser.browser.contexts)
 
             return {
-                "browser_initialized": self.browser.browser is not None,
+                "browser_initialized": await self.browser.check_status(),
                 "debug_mode": self.debug,
+                "headless": self.headless,
+                "browser_mode": "headless" if self.headless else "headed",
+                "keep_pages_open": self.keep_pages_open,
                 "remote_only": self.remote_only,
+                "remote_configured": bool(self.remote_webrender_url),
+                "remote_timeout": self.remote_timeout,
                 "export_logs": self.export_logs,
                 "logs_path": str(self.logs_path) if self.logs_path else None,
                 "name": self.name,

@@ -1,9 +1,14 @@
 .venv
+.env
 .idea
 
 __pycache__
 
 test*
+!tests/
+!tests/test_*.py
 ./dist
 *.log
 node_modules/*
+
+AGENTS.md

@@ -1,6 +1,6 @@
 [project]
 name = "akari-bot-webrender"
-version = "0.5.14"
+version = "0.6.0"
 description = ""
 authors = [
     {name = "OasisAkari", email = "OasisAkari@gmail.com"},
@@ -24,7 +24,15 @@ dependencies = [
     "jinja2>=3.1.6",
     "httpx>=0.28.1",
     "tf-playwright-stealth>=1.2.0",
+]
+
+[project.optional-dependencies]
+desktop = ["websockify==0.13.0"]
+
+[dependency-groups]
+dev = [
     "pre-commit>=4.2.0",
+    "ruff>=0.15.0",
 ]
 
 [project.urls]

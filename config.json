@@ -3,8 +3,13 @@
     "host": "127.0.0.1",
     "port": 15551,
     "debug": false,
+    "headless": true,
+    "keep_pages_open": false,
     "export_logs": false,
     "browser_type": "chromium",
-    "executable_path": null
+    "executable_path": null,
+    "remote_webrender_url": null,
+    "remote_only": false,
+    "remote_timeout": 30
   }
 }

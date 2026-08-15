@@ -1,0 +1,162 @@
+name: Headed and Desktop Docker Smoke Test
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "docker/**"
+      - "config.json"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "akari_bot_webrender/**"
+      - ".github/workflows/headed-smoke.yml"
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "docker/**"
+      - "config.json"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "akari_bot_webrender/**"
+      - ".github/workflows/headed-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  headed-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Validate Docker Compose example
+        run: |
+          docker compose --profile headless config --quiet
+          docker compose --profile headed config --quiet
+          docker compose --profile desktop config --quiet
+
+      - name: Build headed image
+        run: docker build --target headed --tag akari-bot-webrender:headed-smoke .
+
+      - name: Start headed container and render a page
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          container_name="webrender-headed-smoke"
+          response_file="${RUNNER_TEMP}/webrender-page-response.json"
+          screenshot_file="${RUNNER_TEMP}/webrender-page.png"
+
+          cleanup() {
+            exit_status=$?
+            trap - EXIT
+            if (( exit_status != 0 )); then
+              docker logs "${container_name}" || true
+            fi
+            docker rm --force "${container_name}" >/dev/null 2>&1 || true
+            exit "${exit_status}"
+          }
+          trap cleanup EXIT
+
+          docker run --detach \
+            --name "${container_name}" \
+            --shm-size=1g \
+            --env WEBRENDER_HOST=0.0.0.0 \
+            --publish 127.0.0.1:15551:15551 \
+            akari-bot-webrender:headed-smoke
+
+          ready=0
+          for attempt in $(seq 1 60); do
+            if status_json=$(curl --fail --silent --show-error http://127.0.0.1:15551/status/ 2>/dev/null) \
+              && jq --exit-status \
+                '.browser_initialized == true and .headless == false and .browser_mode == "headed"' \
+                <<<"${status_json}" >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if (( ready != 1 )); then
+            echo "WebRender did not become ready within 120 seconds" >&2
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --header 'Content-Type: application/json' \
+            --data-binary '{"content":"<!doctype html><html><body><h1>Headed smoke test</h1><p>Chromium rendered this local content.</p></body></html>","output_type":"png","width":480,"height":320,"counttime":false}' \
+            http://127.0.0.1:15551/page/ \
+            > "${response_file}"
+
+          jq --exit-status \
+            'type == "array" and length > 0 and all(.[]; type == "string" and length > 0)' \
+            "${response_file}" >/dev/null
+
+          jq --raw-output '.[0]' "${response_file}" | base64 --decode > "${screenshot_file}"
+          test -s "${screenshot_file}"
+
+          png_signature=$(od -An -tx1 -N8 "${screenshot_file}" | tr -d '[:space:]')
+          test "${png_signature}" = "89504e470d0a1a0a"
+
+      - name: Build and smoke test desktop image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          image_name="akari-bot-webrender:desktop-smoke"
+          container_name="webrender-desktop-smoke"
+
+          cleanup() {
+            exit_status=$?
+            trap - EXIT
+            if (( exit_status != 0 )); then
+              docker logs "${container_name}" || true
+            fi
+            docker rm --force "${container_name}" >/dev/null 2>&1 || true
+            exit "${exit_status}"
+          }
+          trap cleanup EXIT
+
+          docker build --target desktop --tag "${image_name}" .
+          docker run --detach \
+            --name "${container_name}" \
+            --shm-size=1g \
+            --env ENABLE_NOVNC=1 \
+            --env NOVNC_LISTEN=0.0.0.0 \
+            --env NOVNC_PASSWORD=ci-only-password \
+            --publish 127.0.0.1:15551:15551 \
+            --publish 127.0.0.1:6080:6080 \
+            "${image_name}"
+
+          ready=0
+          for attempt in $(seq 1 60); do
+            if status_json=$(curl --fail --silent --show-error http://127.0.0.1:15551/status/ 2>/dev/null) \
+              && jq --exit-status \
+                '.browser_initialized == true and .headless == false and .browser_mode == "headed"' \
+                <<<"${status_json}" >/dev/null \
+              && curl --fail --silent --show-error http://127.0.0.1:6080/vnc.html >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if (( ready != 1 )); then
+            echo "Desktop WebRender did not become ready within 120 seconds" >&2
+            exit 1
+          fi
+
+          docker exec "${container_name}" pgrep --exact xfce4-session >/dev/null
+          docker exec "${container_name}" pgrep --exact x11vnc >/dev/null
+          docker exec "${container_name}" pgrep --full websockify >/dev/null

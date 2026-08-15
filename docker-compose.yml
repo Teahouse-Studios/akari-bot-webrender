@@ -1,0 +1,50 @@
+x-webrender-environment: &webrender-environment
+  WEBRENDER_HOST: 0.0.0.0
+  WEBRENDER_REMOTE_URL: ${WEBRENDER_REMOTE_URL:-}
+  WEBRENDER_REMOTE_ONLY: ${WEBRENDER_REMOTE_ONLY:-false}
+  WEBRENDER_REMOTE_TIMEOUT: ${WEBRENDER_REMOTE_TIMEOUT:-30}
+
+x-webrender-common: &webrender-common
+  restart: unless-stopped
+  shm_size: 1gb
+
+services:
+  headless:
+    <<: *webrender-common
+    profiles: ["headless"]
+    build:
+      context: .
+      target: headless
+    image: akari-bot-webrender:headless
+    environment:
+      <<: *webrender-environment
+    ports:
+      - "127.0.0.1:${WEBRENDER_HEADLESS_PORT:-15551}:15551"
+
+  headed:
+    <<: *webrender-common
+    profiles: ["headed"]
+    build:
+      context: .
+      target: headed
+    image: akari-bot-webrender:headed
+    environment:
+      <<: *webrender-environment
+    ports:
+      - "127.0.0.1:${WEBRENDER_HEADED_PORT:-15552}:15551"
+
+  desktop:
+    <<: *webrender-common
+    profiles: ["desktop"]
+    build:
+      context: .
+      target: desktop
+    image: akari-bot-webrender:desktop
+    environment:
+      <<: *webrender-environment
+      ENABLE_NOVNC: ${ENABLE_NOVNC:-0}
+      NOVNC_LISTEN: 0.0.0.0
+      NOVNC_PASSWORD: ${NOVNC_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${WEBRENDER_DESKTOP_PORT:-15553}:15551"
+      - "127.0.0.1:${NOVNC_PORT:-6080}:6080"
