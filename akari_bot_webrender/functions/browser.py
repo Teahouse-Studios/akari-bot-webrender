@@ -6,8 +6,23 @@ from playwright.async_api import Browser as BrowserProcess
 from playwright.async_api import BrowserContext, Playwright, ViewportSize
 from playwright_stealth import stealth_async
 
-from ..constants import base_height, base_user_agent, base_width, browser_user_agent
+from ..constants import base_height, base_width, browser_user_agent
 from .logger import LoggingLogger
+
+
+def normalize_locale(locale: str) -> str:
+    parts = locale.replace("_", "-").split("-")
+    normalized = []
+    for index, part in enumerate(parts):
+        if index == 0:
+            normalized.append(part.lower())
+        elif len(part) == 4 and part.isalpha():
+            normalized.append(part.title())
+        elif len(part) == 2 and part.isalpha():
+            normalized.append(part.upper())
+        else:
+            normalized.append(part)
+    return "-".join(normalized)
 
 
 class Browser:
@@ -90,13 +105,16 @@ class Browser:
     async def new_page(
         self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True
     ):
-        ctx_key = f"{width}x{height}_{locale}{'_stealth' if stealth else ''}"
+        normalized_locale = normalize_locale(locale)
+        ctx_key = f"{width}x{height}_{normalized_locale}{'_stealth' if stealth else ''}"
         if self.browser and ctx_key not in self.contexts:
-            self.contexts[ctx_key] = await self.browser.new_context(
-                user_agent=browser_user_agent if stealth else base_user_agent,
-                viewport=ViewportSize(width=width, height=height),
-                locale=locale,
-            )
+            context_options = {
+                "viewport": ViewportSize(width=width, height=height),
+                "locale": normalized_locale,
+            }
+            if stealth:
+                context_options["user_agent"] = browser_user_agent
+            self.contexts[ctx_key] = await self.browser.new_context(**context_options)
         page = await self.contexts[ctx_key].new_page()
         if stealth:
             await stealth_async(page)

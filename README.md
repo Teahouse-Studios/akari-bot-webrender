@@ -124,6 +124,17 @@ curl --fail \
 
 `/page/` 和其他截图接口的返回值仍是 **base64 字符串数组**；长页面可能会按最大截图高度分成多张。有头模式只改变浏览器的运行方式，`page.screenshot()` 获取的仍是网页内容，不包含浏览器标题栏、窗口边框或桌面。需要整个桌面画面时，应另外使用 X11 屏幕采集工具。
 
+对于 Turnstile、延迟 iframe 或其他动态页面，可以关闭 stealth 并显式设置页面加载策略：
+
+```bash
+curl --fail \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.com/","stealth":false,"wait_until":"load","wait_after_load":5000,"output_type":"png"}' \
+  http://127.0.0.1:15551/page/
+```
+
+`stealth=false` 时 WebRender 不再覆盖 Chromium 的 User-Agent，由浏览器使用与自身版本匹配的原生 UA 和 Client Hints。`wait_until` 支持 `commit`、`domcontentloaded`、`load` 和 `networkidle`，为兼容现有调用默认仍使用 `networkidle`；`wait_after_load` 是页面达到该状态后的额外等待时间，单位为毫秒，范围为 `0`–`60000`，默认值为 `0`。截图阶段不会再中止页面的后续网络请求，因此异步脚本、XHR、iframe 和字体仍可继续加载。
+
 ### 完整桌面与 noVNC
 
 `desktop` target 启动完整 XFCE 会话，而不是仅启动一个轻量窗口管理器，适合用于规避部分依赖正常桌面会话、DBus、窗口管理器等环境的网站兼容问题。网页仍可能通过浏览器指纹、WebGL、语言、时区等信号识别自动化环境，因此完整桌面不是通用的反检测保证。

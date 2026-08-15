@@ -171,7 +171,16 @@ class WebRender:
 
     @asynccontextmanager
     async def render_page(
-        self, width=base_width, height=base_height, locale="zh_cn", content=None, url=None, css=None, stealth=True
+        self,
+        width=base_width,
+        height=base_height,
+        locale="zh_cn",
+        content=None,
+        url=None,
+        css=None,
+        stealth=True,
+        wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"] = "networkidle",
+        wait_after_load: int = 0,
     ):
         page = None
         if self.browser:
@@ -179,13 +188,15 @@ class WebRender:
                 start_time = time.time()
                 page = await self.browser.new_page(width=width, height=height, locale=locale, stealth=stealth)
                 if content:
-                    await page.set_content(content, wait_until="networkidle")
+                    await page.set_content(content, wait_until=wait_until)
                 if url:
-                    await page.goto(url, wait_until="networkidle")
+                    await page.goto(url, wait_until=wait_until)
                 if content or url:
                     await page.add_style_tag(content=custom_css)
                     if css:
                         await page.add_style_tag(content=css)
+                    if wait_after_load:
+                        await page.wait_for_timeout(wait_after_load)
                 yield page, start_time
             finally:
                 if not self.keep_pages_open and page:
@@ -210,7 +221,6 @@ class WebRender:
         output_quality: int = 90,
     ) -> list[str]:
         await page.evaluate("window.scroll(0, 0)")
-        await page.route("**/*", lambda route: route.abort())
         content_size = await el.bounding_box()
         dpr = page.viewport_size.get("deviceScaleFactor", 1)
         screenshot_height = math.floor(screenshot_height / dpr)
@@ -293,6 +303,8 @@ class WebRender:
             url=options.url,
             css=options.css,
             stealth=options.stealth,
+            wait_until=options.wait_until,
+            wait_after_load=options.wait_after_load,
         ) as (page, start_time):
             images = await self.select_element_and_screenshot(
                 elements=[
@@ -319,6 +331,8 @@ class WebRender:
             url=options.url,
             css=options.css,
             stealth=options.stealth,
+            wait_until=options.wait_until,
+            wait_after_load=options.wait_after_load,
         ) as (page, start_time):
             images = await self.select_element_and_screenshot(
                 elements=["body"],
@@ -340,6 +354,8 @@ class WebRender:
             url=options.url,
             css=options.css,
             stealth=options.stealth,
+            wait_until=options.wait_until,
+            wait_after_load=options.wait_after_load,
         ) as (page, start_time):
             await page.evaluate(element_screenshot_script, elements_to_disable)
             images = await self.select_element_and_screenshot(
@@ -362,6 +378,8 @@ class WebRender:
             url=options.url,
             css=options.css,
             stealth=options.stealth,
+            wait_until=options.wait_until,
+            wait_after_load=options.wait_after_load,
         ) as (page, start_time):
             await page.evaluate(
                 section_screenshot_script,
@@ -382,11 +400,10 @@ class WebRender:
         url = options.url
         if not url:
             raise RequiredURL
-        async with self.render_page(locale=options.locale, url=options.url, stealth=options.stealth) as (
-            page,
-            _start_time,
-        ):
-            resp = await page.goto(url, wait_until="networkidle")
+        async with self.render_page(locale=options.locale, stealth=options.stealth) as (page, _start_time):
+            resp = await page.goto(url, wait_until=options.wait_until)
+            if options.wait_after_load:
+                await page.wait_for_timeout(options.wait_after_load)
             if resp.status != 200:  # attempt to fetch the url content using fetch
                 get = await page.request.fetch(url)
                 if get.status == 200:

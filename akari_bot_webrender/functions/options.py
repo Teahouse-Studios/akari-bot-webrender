@@ -1,8 +1,10 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..constants import base_height, base_width
+
+WaitUntil = Literal["commit", "domcontentloaded", "load", "networkidle"]
 
 
 class BaseOptions(BaseModel):
@@ -16,6 +18,8 @@ class BaseOptions(BaseModel):
     content: str | None = None
     css: str | None = None
     stealth: bool = True
+    wait_until: WaitUntil = "networkidle"
+    wait_after_load: int = Field(default=0, ge=0, le=60000)
 
 
 class LegacyScreenshotOptions(BaseOptions):
@@ -41,6 +45,8 @@ class SourceOptions(BaseModel):
     raw_text: bool = False
     locale: str = "zh_cn"
     stealth: bool = True
+    wait_until: WaitUntil = "networkidle"
+    wait_after_load: int = Field(default=0, ge=0, le=60000)
 
 
 class RawOptions(BaseModel):
