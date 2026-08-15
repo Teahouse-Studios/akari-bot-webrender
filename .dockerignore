@@ -25,9 +25,3 @@ docker-compose.yml
 requirements.txt
 renovate.json
 AGENTS.md
-test.py
-test2.py
-tests
-test_*.html
-test_*.png
-test_commands.txt
