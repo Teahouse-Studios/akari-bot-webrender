@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS app-base
+FROM python:3.14-slim-bookworm AS app-base
 
 LABEL org.opencontainers.image.url=https://github.com/Teahouse-Studios/akari-bot-webrender
 LABEL org.opencontainers.image.documentation=https://bot.teahouse.team/
