@@ -1,91 +1,135 @@
 function section_screenshot_evaluate({ section, elements_to_disable }) {
-  console.log(`Section: ${section}`); // skipcq
-  console.log(`Elements to disable: ${elements_to_disable}`); // skipcq
+  console.log(`Section: ${section}`) // skipcq
+  console.log(`Elements to disable: ${elements_to_disable}`) // skipcq
 
-  const levels = ["H1", "H2", "H3", "H4", "H5", "H6"];
-  let sec = document.getElementById(section);
-  while (sec) {
-    if (levels.includes(sec.tagName)) {
-      break;
+  const levels = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6']
+  const headingSelector = levels.join(',').toLowerCase()
+
+  function findHeadingAfterAnchor(anchor) {
+    let current = anchor
+    while (current && current.parentElement) {
+      if (current !== anchor && current.textContent.trim()) {
+        return null
+      }
+      let sibling = current.nextElementSibling
+      while (sibling) {
+        if (levels.includes(sibling.tagName)) {
+          return sibling
+        }
+        const nestedHeading = sibling.querySelector(headingSelector)
+        if (nestedHeading) {
+          return nestedHeading
+        }
+        if (sibling.textContent.trim() || sibling.children.length) {
+          break
+        }
+        sibling = sibling.nextElementSibling
+      }
+      current = current.parentElement
     }
-    sec = sec.parentNode;
+    return null
   }
-  let sec_level = sec.tagName;
-  console.log(sec_level);
+
+  function findHeadingBeforeAnchor(anchor) {
+    let previousHeading = null
+    for (const heading of document.querySelectorAll(headingSelector)) {
+      const position = heading.compareDocumentPosition(anchor)
+      if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
+        previousHeading = heading
+      } else if (position & Node.DOCUMENT_POSITION_PRECEDING) {
+        break
+      }
+    }
+    return previousHeading
+  }
+
+  const target = document.getElementById(section)
+  if (!target) {
+    return
+  }
+
+  let heading = target.closest(headingSelector)
+  if (!heading && target.tagName === 'SPAN' && target.classList.contains('anchor')) {
+    heading = findHeadingAfterAnchor(target) || findHeadingBeforeAnchor(target)
+  }
+  if (!heading) {
+    return
+  }
+
+  let sec = heading
+  let sec_level = heading.tagName
+  console.log(sec_level)
   if (
-    sec.parentNode.className.includes("ext-discussiontools-init-section") ||
-    sec.parentNode.className.includes("mw-heading")
+    sec.parentElement.classList.contains('ext-discussiontools-init-section') ||
+    sec.parentElement.classList.contains('mw-heading')
   ) {
     // wo yi ding yao sha le ni men
-    sec = sec.parentNode;
+    sec = sec.parentNode
   }
 
-  let nbox = document.createElement("div");
-  nbox.className = "bot-sectionbox";
-  nbox.style = "display: inline-block";
-  nbox.appendChild(sec.cloneNode(true));
+  let nbox = document.createElement('div')
+  nbox.className = 'bot-sectionbox'
+  nbox.style = 'display: inline-block'
+  nbox.appendChild(sec.cloneNode(true))
 
-  let next_sibling = sec.nextSibling;
+  let next_sibling = sec.nextSibling
   while (next_sibling) {
     if (levels.includes(next_sibling.tagName)) {
-      if (levels.indexOf(next_sibling.tagName) <= levels.indexOf(sec_level))
-        break;
+      if (levels.indexOf(next_sibling.tagName) <= levels.indexOf(sec_level)) break
     }
     if (
-      next_sibling.tagName === "DIV" &&
-      (next_sibling.className.includes("ext-discussiontools-init-section") ||
-        next_sibling.className.includes("mw-heading"))
+      next_sibling.tagName === 'DIV' &&
+      (next_sibling.className.includes('ext-discussiontools-init-section') ||
+        next_sibling.className.includes('mw-heading'))
     ) {
-      let child = next_sibling.firstChild;
-      let bf = false;
+      let child = next_sibling.firstChild
+      let bf = false
       while (child) {
-        console.log(`Child tag: ${child.tagName}`); // skipcq
+        console.log(`Child tag: ${child.tagName}`) // skipcq
         if (
           levels.includes(child.tagName) &&
           levels.indexOf(child.tagName) <= levels.indexOf(sec_level)
         ) {
-          bf = true;
-          break;
+          bf = true
+          break
         }
-        child = child.nextSibling;
+        child = child.nextSibling
       }
-      if (bf) break;
+      if (bf) break
     }
-    nbox.appendChild(next_sibling.cloneNode(true));
-    next_sibling = next_sibling.nextSibling;
+    nbox.appendChild(next_sibling.cloneNode(true))
+    next_sibling = next_sibling.nextSibling
   }
 
-  let lazyimg = nbox.querySelectorAll(".lazyload");
+  let lazyimg = nbox.querySelectorAll('.lazyload')
   for (let i = 0; i < lazyimg.length; i++) {
-    lazyimg[i].className = "image";
-    let dataSrc = lazyimg[i].getAttribute("data-src");
+    lazyimg[i].className = 'image'
+    let dataSrc = lazyimg[i].getAttribute('data-src')
     if (
-      typeof dataSrc === "string" &&
-      (dataSrc.startsWith("http://") ||
-        dataSrc.startsWith("https://") ||
-        dataSrc.startsWith("/"))
+      typeof dataSrc === 'string' &&
+      (dataSrc.startsWith('http://') || dataSrc.startsWith('https://') || dataSrc.startsWith('/'))
     ) {
-      lazyimg[i].src = dataSrc;
+      lazyimg[i].src = dataSrc
     } else {
-      console.warn(`Blocked suspicious data-src value for image: ${dataSrc}`); // skipcq
+      console.warn(`Blocked suspicious data-src value for image: ${dataSrc}`) // skipcq
     }
   }
 
-  let new_parentNode = sec.parentNode.cloneNode();
-  let pparentNode = sec.parentNode.parentNode;
-  pparentNode.removeChild(sec.parentNode);
-  pparentNode.appendChild(new_parentNode);
-  new_parentNode.appendChild(nbox);
+  let new_parentNode = sec.parentNode.cloneNode()
+  let pparentNode = sec.parentNode.parentNode
+  pparentNode.removeChild(sec.parentNode)
+  pparentNode.appendChild(new_parentNode)
+  new_parentNode.appendChild(nbox)
 
   for (let i = 0; i < elements_to_disable.length; i++) {
-    let element_to_boom = document.querySelector(elements_to_disable[i]); // :rina: :rina: :rina: :rina:
+    let element_to_boom = document.querySelector(elements_to_disable[i]) // :rina: :rina: :rina: :rina:
     if (element_to_boom != null) {
-      element_to_boom.style = "display: none !important";
+      element_to_boom.style = 'display: none !important'
     }
   }
 
-  document.querySelectorAll("*").forEach((element) => {
-    element.parentNode.replaceChild(element.cloneNode(true), element);
-  });
-  window.scroll(0, 0);
+  document.querySelectorAll('*').forEach((element) => {
+    element.parentNode.replaceChild(element.cloneNode(true), element)
+  })
+  window.scroll(0, 0)
 }
