@@ -12,6 +12,7 @@ from akari_bot_webrender.functions.options import (
     ElementScreenshotOptions,
     LegacyScreenshotOptions,
     PageScreenshotOptions,
+    ReplaceElementScreenshotOptions,
     SectionScreenshotOptions,
     SourceOptions,
 )
@@ -117,6 +118,60 @@ class PageLoadControlTest(unittest.IsolatedAsyncioTestCase):
                 render_options = renderer.render_page.call_args.kwargs
                 self.assertEqual(render_options["wait_until"], "domcontentloaded")
                 self.assertEqual(render_options["wait_after_load"], 4321)
+
+    async def test_replace_element_screenshot_replaces_and_waits_before_capture(self):
+        renderer = WebRender()
+        renderer.browser.check_status = AsyncMock(return_value=True)
+        page = MagicMock()
+        page.evaluate = AsyncMock(side_effect=[None, True])
+        page.wait_for_timeout = AsyncMock()
+        options = ReplaceElementScreenshotOptions(
+            url="https://example.com/page",
+            element="#content",
+            content='<div class="preview">Rendered</div>',
+            wait_after_load=2500,
+        )
+
+        @asynccontextmanager
+        async def render_context():
+            yield page, 0.0
+
+        renderer.render_page = MagicMock(return_value=render_context())
+        renderer.select_element_and_screenshot = AsyncMock(return_value=["image"])
+
+        result = await renderer.replace_element_screenshot(options)
+
+        self.assertEqual(result, ["image"])
+        self.assertEqual(page.evaluate.await_count, 2)
+        replacement = page.evaluate.await_args_list[1].args[1]
+        self.assertEqual(replacement["selector"], "#content")
+        self.assertEqual(replacement["content"], '<div class="preview">Rendered</div>')
+        page.wait_for_timeout.assert_awaited_once_with(2500)
+        renderer.select_element_and_screenshot.assert_awaited_once()
+        self.assertEqual(renderer.select_element_and_screenshot.await_args.kwargs["elements"], "#content")
+
+    async def test_replace_element_screenshot_rejects_missing_element(self):
+        renderer = WebRender()
+        renderer.browser.check_status = AsyncMock(return_value=True)
+        page = MagicMock()
+        page.evaluate = AsyncMock(side_effect=[None, False])
+
+        @asynccontextmanager
+        async def render_context():
+            yield page, 0.0
+
+        renderer.render_page = MagicMock(return_value=render_context())
+        renderer.select_element_and_screenshot = AsyncMock()
+
+        with self.assertRaises(Exception) as context:
+            await renderer.replace_element_screenshot(
+                ReplaceElementScreenshotOptions(
+                    url="https://example.com/page", element="#missing", content="<p>Rendered</p>"
+                )
+            )
+
+        self.assertEqual(type(context.exception).__name__, "ElementNotFound")
+        renderer.select_element_and_screenshot.assert_not_awaited()
 
     async def test_source_navigates_once_with_load_controls(self):
         renderer = WebRender()

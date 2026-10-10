@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from ..constants import base_height, base_width
+from ..constants import base_height, base_width, elements_to_disable
 
 WaitUntil = Literal["commit", "domcontentloaded", "load", "networkidle"]
 
@@ -20,6 +20,7 @@ class BaseOptions(BaseModel):
     stealth: bool = True
     wait_until: WaitUntil = "networkidle"
     wait_after_load: int = Field(default=0, ge=0, le=60000)
+    elements_to_disable: list = elements_to_disable
 
 
 class LegacyScreenshotOptions(BaseOptions):
@@ -33,6 +34,12 @@ class PageScreenshotOptions(BaseOptions):
 class ElementScreenshotOptions(BaseOptions):
     element: str | list | None = None
     elements_to_disable: list | None = None
+
+
+class ReplaceElementScreenshotOptions(BaseOptions):
+    url: str
+    element: str
+    content: str
 
 
 class SectionScreenshotOptions(BaseOptions):

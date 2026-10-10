@@ -87,6 +87,39 @@ class ServerRemoteFallbackTest(unittest.TestCase):
         self.assertIsNone(response.json())
         client_class.assert_not_called()
 
+    def test_replace_element_screenshot_endpoint_accepts_three_core_arguments(self):
+        server_main.config["remote_only"] = True
+        server_main.config["remote_webrender_url"] = "https://fallback.example/"
+        server_main.webrender.remote_only = True
+        server_main.webrender.remote_webrender_url = "https://fallback.example/"
+        with (
+            patch.object(server_main.webrender, "browser_init", AsyncMock()),
+            patch.object(server_main.webrender, "browser_close", AsyncMock()),
+            patch.object(
+                server_main.webrender,
+                "replace_element_screenshot",
+                AsyncMock(return_value=["image"]),
+            ) as replace,
+            patch.object(server_main.webrender.browser, "check_status", AsyncMock(return_value=False)),
+            TestClient(server_main.app) as client,
+        ):
+            response = client.post(
+                "/replace_element_screenshot/",
+                json={
+                    "url": "https://example.com/page",
+                    "element": "#content",
+                    "content": "<p>Rendered</p>",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), ["image"])
+        replace.assert_awaited_once()
+        options = replace.await_args.args[0]
+        self.assertEqual(options.url, "https://example.com/page")
+        self.assertEqual(options.element, "#content")
+        self.assertEqual(options.content, "<p>Rendered</p>")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,6 +13,7 @@ from ..functions.options import (
     LegacyScreenshotOptions,
     PageScreenshotOptions,
     RawOptions,
+    ReplaceElementScreenshotOptions,
     SectionScreenshotOptions,
     SourceOptions,
     StatusOptions,
@@ -121,6 +122,15 @@ async def page_screenshot(options: PageScreenshotOptions):
 async def element_screenshot(options: ElementScreenshotOptions):
     try:
         images = await webrender.element_screenshot(options)
+    except ElementNotFound:
+        raise HTTPException(status_code=404, detail="Element not found")
+    return ORJSONResponse(content=images)
+
+
+@app.post("/replace_element_screenshot/")
+async def replace_element_screenshot(options: ReplaceElementScreenshotOptions):
+    try:
+        images = await webrender.replace_element_screenshot(options)
     except ElementNotFound:
         raise HTTPException(status_code=404, detail="Element not found")
     return ORJSONResponse(content=images)

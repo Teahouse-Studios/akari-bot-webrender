@@ -12,7 +12,7 @@ import orjson as json
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import ElementHandle, FloatRect, Page
 
-from ..constants import base_height, base_width, elements_to_disable, max_screenshot_height, templates_path
+from ..constants import base_height, base_width, max_screenshot_height, templates_path
 from .browser import Browser
 from .exceptions import ElementNotFound, RequiredURL
 from .options import (
@@ -20,6 +20,7 @@ from .options import (
     LegacyScreenshotOptions,
     PageScreenshotOptions,
     RawOptions,
+    ReplaceElementScreenshotOptions,
     SectionScreenshotOptions,
     SourceOptions,
     StatusOptions,
@@ -29,12 +30,14 @@ env = Environment(loader=FileSystemLoader(templates_path), autoescape=True, enab
 custom_css = (templates_path / "custom.css").read_text(encoding="utf-8")
 add_count_box_script = (templates_path / "add_count_box.js").read_text(encoding="utf-8")
 element_screenshot_script = (templates_path / "element_screenshot_evaluate.js").read_text(encoding="utf-8")
+replace_element_script = (templates_path / "replace_element_evaluate.js").read_text(encoding="utf-8")
 section_screenshot_script = (templates_path / "section_screenshot_evaluate.js").read_text(encoding="utf-8")
 
 remote_endpoints = {
     "legacy_screenshot": "legacy_screenshot",
     "page_screenshot": "page",
     "element_screenshot": "element_screenshot",
+    "replace_element_screenshot": "replace_element_screenshot",
     "section_screenshot": "section_screenshot",
     "source": "source",
     "get_raw": "get_raw",
@@ -68,6 +71,9 @@ def webrender_fallback(func):
             if result is not None:
                 return result
             self.logger.warning(f"Local WebRender returned no result for {func.__name__}.")
+        except ElementNotFound:
+            self.logger.exception(f"Element was not found with options {options}:")
+            return None
         except Exception:
             self.logger.exception(f"WebRender processing failed with options: {options}:")
 
@@ -357,7 +363,7 @@ class WebRender:
             wait_until=options.wait_until,
             wait_after_load=options.wait_after_load,
         ) as (page, start_time):
-            await page.evaluate(element_screenshot_script, elements_to_disable)
+            await page.evaluate(element_screenshot_script, options.elements_to_disable)
             images = await self.select_element_and_screenshot(
                 elements=options.element,
                 page=page,
@@ -367,6 +373,35 @@ class WebRender:
                 output_quality=options.output_quality,
             )
             return images
+
+    @webrender_fallback
+    async def replace_element_screenshot(self, options: ReplaceElementScreenshotOptions):
+        async with self.render_page(
+            width=options.width,
+            height=options.height,
+            locale=options.locale,
+            url=options.url,
+            css=options.css,
+            stealth=options.stealth,
+            wait_until=options.wait_until,
+        ) as (page, start_time):
+            await page.evaluate(element_screenshot_script, options.elements_to_disable)
+            replaced = await page.evaluate(
+                replace_element_script,
+                {"selector": options.element, "content": options.content},
+            )
+            if not replaced:
+                raise ElementNotFound
+            if options.wait_after_load:
+                await page.wait_for_timeout(options.wait_after_load)
+            return await self.select_element_and_screenshot(
+                elements=options.element,
+                page=page,
+                start_time=start_time,
+                count_time=options.counttime,
+                output_type=options.output_type,
+                output_quality=options.output_quality,
+            )
 
     @webrender_fallback
     async def section_screenshot(self, options: SectionScreenshotOptions):
@@ -383,7 +418,7 @@ class WebRender:
         ) as (page, start_time):
             await page.evaluate(
                 section_screenshot_script,
-                {"section": options.section, "elements_to_disable": elements_to_disable},
+                {"section": options.section, "elements_to_disable": options.elements_to_disable},
             )
             images = await self.select_element_and_screenshot(
                 elements=".bot-sectionbox",
