@@ -33,7 +33,6 @@ class PageScreenshotOptions(BaseOptions):
 
 class ElementScreenshotOptions(BaseOptions):
     element: str | list | None = None
-    elements_to_disable: list | None = None
 
 
 class ReplaceElementScreenshotOptions(BaseOptions):
@@ -44,7 +43,6 @@ class ReplaceElementScreenshotOptions(BaseOptions):
 
 class SectionScreenshotOptions(BaseOptions):
     section: str | list | None = None
-    elements_to_disable: list | None = None
 
 
 class SourceOptions(BaseModel):
