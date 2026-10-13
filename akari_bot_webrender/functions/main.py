@@ -56,7 +56,7 @@ def webrender_fallback(func):
             if not self.remote_webrender_url:
                 self.logger.error("Remote-only mode is enabled, but no remote WebRender URL is configured.")
                 return None
-            self.logger.info("Local WebRender is disabled, using remote WebRender only.")
+            self.logger.warning("Local WebRender is disabled, using remote WebRender only.")
             return await self._request_remote(remote_endpoint, options)
 
         if not await self.browser.check_status():
@@ -66,7 +66,7 @@ def webrender_fallback(func):
             return None
 
         try:
-            self.logger.info(func.__name__ + " function called with options: " + str(options))
+            self.logger.debug(func.__name__ + " function called with options: " + str(options))
             result = await func(self, options)
             if result is not None:
                 return result
@@ -160,7 +160,7 @@ class WebRender:
                 query=None,
                 fragment=None,
             )
-            self.logger.info(f"Trying remote WebRender: {safe_remote_url}")
+            self.logger.warning(f"Trying remote WebRender: {safe_remote_url}")
             async with httpx.AsyncClient(timeout=self.remote_timeout, follow_redirects=True) as client:
                 resp = await client.post(
                     remote_url,
@@ -230,7 +230,7 @@ class WebRender:
         content_size = await el.bounding_box()
         dpr = page.viewport_size.get("deviceScaleFactor", 1)
         screenshot_height = math.floor(screenshot_height / dpr)
-        self.logger.info(f"Content size: {content_size}, DPR: {dpr}, Screenshot height: {screenshot_height}")
+        self.logger.debug(f"Content size: {content_size}, DPR: {dpr}, Screenshot height: {screenshot_height}")
 
         # If content height is less than max screenshot height, take a single screenshot and return as a list with one item
 
@@ -252,7 +252,7 @@ class WebRender:
                     content_size.get("height") + content_size.get("y") - total_content_height + max_screenshot_height
                 )
             await page.evaluate(f"window.scroll({content_size.get('x')}, {y_pos})")
-            self.logger.info(
+            self.logger.debug(
                 "X:"
                 + str(content_size.get("x"))
                 + " Y:"
