@@ -276,10 +276,10 @@ class WebRender:
         return images
 
     @classmethod
-    async def add_count_box(cls, page: Page, element: str, start_time: float = time.time()):
+    async def add_count_box(cls, page: Page, element: str, start_time: float = time.time(), custom_watermark_info: str = "") -> list[ElementHandle]:
         return await page.evaluate(
             add_count_box_script,
-            {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name},
+            {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name + custom_watermark_info},
         )
 
     async def select_element_and_screenshot(
@@ -290,12 +290,14 @@ class WebRender:
         count_time=True,
         output_type: Literal["png", "jpeg"] = "jpeg",
         output_quality: int = 90,
+        custom_watermark_info: str ="",
     ):
         el, selected_ = await self.select_element(elements, page)
         if not el:
             raise ElementNotFound
         if count_time:
-            await self.add_count_box(page, selected_, start_time)
+            await self.add_count_box(page, selected_, start_time,
+                                            custom_watermark_info=custom_watermark_info)
         images = await self.make_screenshot(page, el, output_type=output_type, output_quality=output_quality)
         return images
 
@@ -323,6 +325,7 @@ class WebRender:
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality,
+                custom_watermark_info=options.custom_watermark_info,
             )
             return images
 
@@ -347,6 +350,7 @@ class WebRender:
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality,
+                custom_watermark_info=options.custom_watermark_info,
             )
             return images
 
@@ -371,6 +375,7 @@ class WebRender:
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality,
+                custom_watermark_info=options.custom_watermark_info,
             )
             return images
 
@@ -401,6 +406,7 @@ class WebRender:
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality,
+                custom_watermark_info=options.custom_watermark_info,
             )
 
     @webrender_fallback
@@ -427,6 +433,7 @@ class WebRender:
                 count_time=options.counttime,
                 output_type=options.output_type,
                 output_quality=options.output_quality,
+                custom_watermark_info=options.custom_watermark_info,
             )
             return images
 
