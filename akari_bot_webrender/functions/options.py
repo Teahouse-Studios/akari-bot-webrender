@@ -22,6 +22,7 @@ class BaseOptions(BaseModel):
     wait_after_load: int = Field(default=0, ge=0, le=60000)
     elements_to_disable: list = elements_to_disable
     custom_watermark_info: str = ""
+    dark_mode: bool = False
 
 
 class LegacyScreenshotOptions(BaseOptions):

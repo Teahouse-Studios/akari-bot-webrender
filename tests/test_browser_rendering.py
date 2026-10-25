@@ -50,6 +50,23 @@ class BrowserCompatibilityTest(unittest.IsolatedAsyncioTestCase):
         context_options = browser_process.new_context.await_args.kwargs
         self.assertEqual(context_options["user_agent"], browser_user_agent)
 
+    async def test_color_scheme_is_forwarded_and_cached_per_scheme(self):
+        browser = Browser()
+        context = MagicMock()
+        context.new_page = AsyncMock(return_value=MagicMock())
+        browser_process = MagicMock()
+        browser_process.new_context = AsyncMock(return_value=context)
+        browser.browser = browser_process
+
+        with patch("akari_bot_webrender.functions.browser.stealth_async", AsyncMock()):
+            await browser.new_page(color_scheme="dark")
+            await browser.new_page(color_scheme="light")
+            await browser.new_page(color_scheme="dark")
+
+        self.assertEqual(browser_process.new_context.await_count, 2)
+        schemes = [call.kwargs["color_scheme"] for call in browser_process.new_context.await_args_list]
+        self.assertEqual(schemes, ["dark", "light"])
+
     async def test_make_screenshot_does_not_abort_late_network_requests(self):
         renderer = WebRender()
         page = MagicMock()
@@ -86,6 +103,55 @@ class PageLoadControlTest(unittest.IsolatedAsyncioTestCase):
         page.set_content.assert_awaited_once_with("<p>dynamic page</p>", wait_until="domcontentloaded")
         page.wait_for_timeout.assert_awaited_once_with(2500)
 
+    async def test_render_page_injects_dark_theme_for_light_pages(self):
+        renderer = WebRender()
+        page = MagicMock()
+        page.set_content = AsyncMock()
+        page.add_style_tag = AsyncMock()
+        page.evaluate = AsyncMock(return_value=True)
+        page.close = AsyncMock()
+        renderer.browser.new_page = AsyncMock(return_value=page)
+
+        async with renderer.render_page(content="<p>dark page</p>", dark_mode=True):
+            pass
+
+        self.assertEqual(renderer.browser.new_page.await_args.kwargs["color_scheme"], "dark")
+        style_contents = [call.kwargs["content"] for call in page.add_style_tag.await_args_list]
+        self.assertEqual(len(style_contents), 2)
+        self.assertIn("color-scheme: dark", style_contents[1])
+
+    async def test_render_page_skips_dark_theme_for_native_dark_pages(self):
+        renderer = WebRender()
+        page = MagicMock()
+        page.set_content = AsyncMock()
+        page.add_style_tag = AsyncMock()
+        page.evaluate = AsyncMock(return_value=False)
+        page.close = AsyncMock()
+        renderer.browser.new_page = AsyncMock(return_value=page)
+
+        async with renderer.render_page(content="<p>dark page</p>", dark_mode=True):
+            pass
+
+        style_contents = [call.kwargs["content"] for call in page.add_style_tag.await_args_list]
+        self.assertEqual(len(style_contents), 1)
+        self.assertNotIn("color-scheme: dark", style_contents[0])
+
+    async def test_render_page_uses_light_color_scheme_by_default(self):
+        renderer = WebRender()
+        page = MagicMock()
+        page.set_content = AsyncMock()
+        page.add_style_tag = AsyncMock()
+        page.evaluate = AsyncMock(return_value=True)
+        page.close = AsyncMock()
+        renderer.browser.new_page = AsyncMock(return_value=page)
+
+        async with renderer.render_page(content="<p>light page</p>"):
+            pass
+
+        self.assertEqual(renderer.browser.new_page.await_args.kwargs["color_scheme"], "light")
+        page.evaluate.assert_not_awaited()
+        self.assertEqual(page.add_style_tag.await_count, 1)
+
     async def test_screenshot_endpoints_forward_load_controls(self):
         def make_render_context(current_page):
             @asynccontextmanager
@@ -118,6 +184,40 @@ class PageLoadControlTest(unittest.IsolatedAsyncioTestCase):
                 render_options = renderer.render_page.call_args.kwargs
                 self.assertEqual(render_options["wait_until"], "domcontentloaded")
                 self.assertEqual(render_options["wait_after_load"], 4321)
+
+    async def test_screenshot_endpoints_forward_dark_mode(self):
+        def make_render_context(current_page):
+            @asynccontextmanager
+            async def render_context():
+                yield current_page, 0.0
+
+            return render_context()
+
+        cases = [
+            ("legacy_screenshot", LegacyScreenshotOptions(content="legacy")),
+            ("page_screenshot", PageScreenshotOptions(content="page")),
+            ("element_screenshot", ElementScreenshotOptions(content="element", element="body")),
+            (
+                "replace_element_screenshot",
+                ReplaceElementScreenshotOptions(url="https://example.com/", element="body", content="replaced"),
+            ),
+            ("section_screenshot", SectionScreenshotOptions(content="section", section="body")),
+        ]
+
+        for method_name, options in cases:
+            with self.subTest(method=method_name):
+                options.dark_mode = True
+                renderer = WebRender()
+                renderer.browser.check_status = AsyncMock(return_value=True)
+                page = MagicMock()
+                page.evaluate = AsyncMock(side_effect=[None, True])
+                renderer.render_page = MagicMock(return_value=make_render_context(page))
+                renderer.select_element_and_screenshot = AsyncMock(return_value=["image"])
+
+                result = await getattr(renderer, method_name)(options)
+
+                self.assertEqual(result, ["image"])
+                self.assertTrue(renderer.render_page.call_args.kwargs["dark_mode"])
 
     async def test_replace_element_screenshot_replaces_and_waits_before_capture(self):
         renderer = WebRender()
@@ -202,6 +302,9 @@ class PageLoadControlTest(unittest.IsolatedAsyncioTestCase):
     def test_wait_after_load_is_bounded(self):
         with self.assertRaises(ValidationError):
             PageScreenshotOptions(wait_after_load=60001)
+
+    def test_dark_mode_is_disabled_by_default(self):
+        self.assertFalse(PageScreenshotOptions().dark_mode)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,8 @@ add_count_box_script = (templates_path / "add_count_box.js").read_text(encoding=
 element_screenshot_script = (templates_path / "element_screenshot_evaluate.js").read_text(encoding="utf-8")
 replace_element_script = (templates_path / "replace_element_evaluate.js").read_text(encoding="utf-8")
 section_screenshot_script = (templates_path / "section_screenshot_evaluate.js").read_text(encoding="utf-8")
+dark_css = (templates_path / "dark.css").read_text(encoding="utf-8")
+detect_light_background_script = (templates_path / "detect_light_background.js").read_text(encoding="utf-8")
 
 remote_endpoints = {
     "legacy_screenshot": "legacy_screenshot",
@@ -187,18 +189,27 @@ class WebRender:
         stealth=True,
         wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"] = "networkidle",
         wait_after_load: int = 0,
+        dark_mode: bool = False,
     ):
         page = None
         if self.browser:
             try:
                 start_time = time.time()
-                page = await self.browser.new_page(width=width, height=height, locale=locale, stealth=stealth)
+                page = await self.browser.new_page(
+                    width=width,
+                    height=height,
+                    locale=locale,
+                    stealth=stealth,
+                    color_scheme="dark" if dark_mode else "light",
+                )
                 if content:
                     await page.set_content(content, wait_until=wait_until)
                 if url:
                     await page.goto(url, wait_until=wait_until)
                 if content or url:
                     await page.add_style_tag(content=custom_css)
+                    if dark_mode and await page.evaluate(detect_light_background_script):
+                        await page.add_style_tag(content=dark_css)
                     if css:
                         await page.add_style_tag(content=css)
                     if wait_after_load:
@@ -276,10 +287,16 @@ class WebRender:
         return images
 
     @classmethod
-    async def add_count_box(cls, page: Page, element: str, start_time: float = time.time(), custom_watermark_info: str = "") -> list[ElementHandle]:
+    async def add_count_box(
+        cls, page: Page, element: str, start_time: float = time.time(), custom_watermark_info: str = ""
+    ) -> list[ElementHandle]:
         return await page.evaluate(
             add_count_box_script,
-            {"selected_element": element, "start_time": int(start_time * 1000), "name": cls.name + custom_watermark_info},
+            {
+                "selected_element": element,
+                "start_time": int(start_time * 1000),
+                "name": cls.name + custom_watermark_info,
+            },
         )
 
     async def select_element_and_screenshot(
@@ -290,14 +307,13 @@ class WebRender:
         count_time=True,
         output_type: Literal["png", "jpeg"] = "jpeg",
         output_quality: int = 90,
-        custom_watermark_info: str ="",
+        custom_watermark_info: str = "",
     ):
         el, selected_ = await self.select_element(elements, page)
         if not el:
             raise ElementNotFound
         if count_time:
-            await self.add_count_box(page, selected_, start_time,
-                                            custom_watermark_info=custom_watermark_info)
+            await self.add_count_box(page, selected_, start_time, custom_watermark_info=custom_watermark_info)
         images = await self.make_screenshot(page, el, output_type=output_type, output_quality=output_quality)
         return images
 
@@ -313,6 +329,7 @@ class WebRender:
             stealth=options.stealth,
             wait_until=options.wait_until,
             wait_after_load=options.wait_after_load,
+            dark_mode=options.dark_mode,
         ) as (page, start_time):
             images = await self.select_element_and_screenshot(
                 elements=[
@@ -342,6 +359,7 @@ class WebRender:
             stealth=options.stealth,
             wait_until=options.wait_until,
             wait_after_load=options.wait_after_load,
+            dark_mode=options.dark_mode,
         ) as (page, start_time):
             images = await self.select_element_and_screenshot(
                 elements=["body"],
@@ -366,6 +384,7 @@ class WebRender:
             stealth=options.stealth,
             wait_until=options.wait_until,
             wait_after_load=options.wait_after_load,
+            dark_mode=options.dark_mode,
         ) as (page, start_time):
             await page.evaluate(element_screenshot_script, options.elements_to_disable)
             images = await self.select_element_and_screenshot(
@@ -389,6 +408,7 @@ class WebRender:
             css=options.css,
             stealth=options.stealth,
             wait_until=options.wait_until,
+            dark_mode=options.dark_mode,
         ) as (page, start_time):
             await page.evaluate(element_screenshot_script, options.elements_to_disable)
             replaced = await page.evaluate(
@@ -421,6 +441,7 @@ class WebRender:
             stealth=options.stealth,
             wait_until=options.wait_until,
             wait_after_load=options.wait_after_load,
+            dark_mode=options.dark_mode,
         ) as (page, start_time):
             await page.evaluate(
                 section_screenshot_script,

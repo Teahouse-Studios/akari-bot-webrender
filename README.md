@@ -43,6 +43,19 @@ docker run --rm \
 
 `remote_only=true` 时必须同时提供远端 URL。服务会为回退请求添加单跳标记，远端实例仍会先尝试自己的本地浏览器，但不会在失败后继续转发，从而避免自指或 A→B→A 配置形成递归请求。建议仍将回退关系配置为单向，并确保远端目标具备可用的本地渲染能力。远端地址属于受信任的服务端配置；跨公网使用时建议通过 HTTPS、鉴权反向代理或私有网络连接。
 
+## 深色模式
+
+截图接口支持通过 `dark_mode` 启用深色渲染，`/legacy_screenshot/`、`/page/`、`/element_screenshot/`、`/replace_element_screenshot/` 和 `/section_screenshot/` 均可使用：
+
+```bash
+curl --fail \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"<p>深色模式 <a href=\"#\">链接</a></p>","dark_mode":true,"output_type":"png"}' \
+  http://127.0.0.1:15551/page/
+```
+
+WebRender 会为页面模拟 `prefers-color-scheme: dark`，使支持深色的网站（以及通过 `matchMedia` 切换主题的脚本）使用深色主题。随后会检查页面背景亮度：如果页面仍是浅色（例如只包含正文片段的 wiki 内容，或本身不支持深色的站点），再注入内置的深色配色，并保留 `css` 参数的覆盖能力。图片不会做反色处理，以保留原始色彩；页面内联的白色背景或背景图片可能仍需要调用方通过 `css` 覆盖。`dark_mode` 默认值为 `false`，不传时保持原有浅色渲染。
+
 ## Docker 有头模式
 
 项目的 Dockerfile 提供三种构建 target：

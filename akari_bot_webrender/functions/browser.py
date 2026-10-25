@@ -103,14 +103,20 @@ class Browser:
         return True
 
     async def new_page(
-        self, width: int = base_width, height: int = base_height, locale: str = "zh_cn", stealth: bool = True
+        self,
+        width: int = base_width,
+        height: int = base_height,
+        locale: str = "zh_cn",
+        stealth: bool = True,
+        color_scheme: Literal["light", "dark"] = "light",
     ):
         normalized_locale = normalize_locale(locale)
-        ctx_key = f"{width}x{height}_{normalized_locale}{'_stealth' if stealth else ''}"
+        ctx_key = f"{width}x{height}_{normalized_locale}{'_stealth' if stealth else ''}_{color_scheme}"
         if self.browser and ctx_key not in self.contexts:
             context_options = {
                 "viewport": ViewportSize(width=width, height=height),
                 "locale": normalized_locale,
+                "color_scheme": color_scheme,
             }
             if stealth:
                 context_options["user_agent"] = browser_user_agent

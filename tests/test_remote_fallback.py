@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from akari_bot_webrender.functions.main import WebRender, remote_fallback_hop, webrender_fallback
+from akari_bot_webrender.functions.options import PageScreenshotOptions
 
 
 class DummyOptions:
@@ -136,6 +137,13 @@ class RemoteFallbackTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("user", log_message)
         self.assertNotIn("secret", log_message)
         self.assertEqual(log_message, "Trying remote WebRender: https://fallback.example/api/status/")
+
+    def test_dark_mode_is_serialized_for_remote_fallback(self):
+        payload = PageScreenshotOptions(content="<p>dark</p>", dark_mode=True).model_dump(
+            mode="json", exclude_none=True
+        )
+
+        self.assertTrue(payload["dark_mode"])
 
 
 if __name__ == "__main__":
